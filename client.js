@@ -111,6 +111,7 @@ Client.prototype.createInterface = function() {
 var listen = {
   sharedworker: function() {
     debug('listening (sharedworker)');
+    this.server.port.start();
     this.server.port.addEventListener('message', e => {
       this.onmessage(e);
     });

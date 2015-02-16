@@ -42,7 +42,7 @@ Server.prototype.respond = function(request, result) {
 };
 
 Server.prototype.onmessage = function(data) {
-  debug('on message', data.type, data.contract);
+  debug('on message', data);
   if (data.type !== 'request') return;
   if (data.name !== this.name) return;
   this.onrequest(data);
@@ -85,7 +85,7 @@ var send = {
   },
 
   sharedworker: function(data) {
-    debug('send (sharedworker)', data.type);
+    debug('send (sharedworker)', data);
     var port = data.port;
     delete data.port;
     port.postMessage(data);
