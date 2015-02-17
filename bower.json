@@ -1,0 +1,15 @@
+{
+  "name": "runtime-bridge",
+  "version": "0.1.0",
+  "authors": [
+    "Wilson Page <wilsonpage@me.com>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
