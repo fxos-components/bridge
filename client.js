@@ -18,7 +18,6 @@ const ERRORS = {
 exports.Client = Client;
 
 function Client(contract, server) {
-  this.name = contract.name;
   this.contract = contract;
   this.server = server;
   this.serverType = getType(server);
@@ -36,7 +35,7 @@ Client.prototype.request = function(method, args) {
   var deferred = new Deferred();
   var id = uuid();
   var data = {
-    name: this.name,
+    contract: this.contract.name,
     type: 'request',
     uuid: id,
     method: method,
@@ -50,11 +49,11 @@ Client.prototype.request = function(method, args) {
 
 Client.prototype.addEventListener = function(name, fn) {
   if (!this.contract.events[name]) throw new Error(ERRORS[1]);
-  this.server.addEventListener('broadcast', fn);
+  this.server.addEventListener('broadcast:' + name, fn);
 };
 
 Client.prototype.removeEventListener = function(name, fn) {
-  this.server.removeEventListener('broadcast', fn);
+  this.server.removeEventListener('broadcast:' + name, fn);
 };
 
 Client.prototype.dispatchEvent = function(e) {
@@ -63,7 +62,7 @@ Client.prototype.dispatchEvent = function(e) {
 
 Client.prototype.onmessage = function(e) {
   debug('on message', e, e.data);
-  if (e.data.name !== this.name) return;
+  if (e.data.contract !== this.contract.name) return;
   if (!~MESSAGE_TYPES.indexOf(e.data.type)) return;
   this['on' + e.data.type](e.data);
 };
@@ -79,7 +78,7 @@ Client.prototype.onresponse = function(data) {
 
 Client.prototype.onbroadcast = function(data) {
   debug('on broadcast', data);
-  var e = new Event('broadcast');
+  var e = new Event('broadcast:' + data.name);
   e.data = data.data;
   this.server.dispatchEvent(e);
 };

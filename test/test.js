@@ -61,6 +61,19 @@ suite('client', function() {
         this.client.testBroadcast('contactchanged');
       });
 
+      test('It only calls the callbacks for the event name', function(done) {
+        this.client.addEventListener('someeventname', e => {
+          done('should not be called');
+        });
+
+        this.client.addEventListener('contactchanged', e => {
+          done();
+        });
+
+        // Ping the server to test a dispatch event
+        this.client.testBroadcast('contactchanged');
+      });
+
       test('It removes event listeners', function(done) {
         var spy = sinon.spy();
 

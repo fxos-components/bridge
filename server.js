@@ -13,7 +13,7 @@ const ERRORS = {
 };
 
 function Server(contract, methods) {
-  this.name = contract.name;
+  this.contract = contract;
   this.methods = methods;
   this.env = getEnv();
   this._broadcast = broadcast[this.env];
@@ -27,8 +27,9 @@ function Server(contract, methods) {
 Server.prototype.broadcast = function(name, data) {
   debug('broadcast', name, data);
   this._broadcast({
-    name: this.name,
+    contract: this.contract.name,
     type: 'broadcast',
+    name: name,
     data: data
   });
 };
@@ -43,8 +44,8 @@ Server.prototype.respond = function(request, result) {
 
 Server.prototype.onmessage = function(data) {
   debug('on message', data);
+  if (data.contract !== this.contract.name) return;
   if (data.type !== 'request') return;
-  if (data.name !== this.name) return;
   this.onrequest(data);
 };
 

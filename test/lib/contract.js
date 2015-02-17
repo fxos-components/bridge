@@ -14,6 +14,7 @@ var contract = {
   },
 
   events: {
-    contactchanged: 'object'
+    contactchanged: 'object',
+    someeventname: 'object',
   }
 };
