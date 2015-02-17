@@ -1,6 +1,4 @@
-
-
-## runtime-bridge
+## runtime-bridge ![](https://travis-ci.org/gaia-components/runtime-bridge.svg)
 
 Implements a 'contracted' interface between two JS 'runtimes' based on a client/server paradigm. A 'runtime' could be an instance of:
 
