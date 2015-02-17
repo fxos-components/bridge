@@ -116,6 +116,11 @@ var listen = {
     });
   },
 
+  serviceworker: function() {
+    debug('listening (serviceworker)');
+    addEventListener('message', e => this.onmessage(e));
+  },
+
   default: function() {
     debug('listening (default)');
     this.server.addEventListener('message', e => this.onmessage(e));

@@ -35,7 +35,7 @@ Server.prototype.broadcast = function(name, data) {
 };
 
 Server.prototype.respond = function(request, result) {
-  debug('respond', request.type, result);
+  debug('respond', request, result);
   var response = request;
   response.result = result;
   response.type = 'response';
@@ -94,6 +94,7 @@ var send = {
 
   // TODO: Find a way to target one client
   serviceworker: function(data) {
+    debug('send (serviceworker)', data);
     clients.getAll().then(function(windows) {
       windows.forEach(function(win) {
         win.postMessage(data);
