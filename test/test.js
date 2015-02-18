@@ -1,6 +1,9 @@
 /*global window,assert,suite,setup,teardown,sinon,test*/
 /*jshint esnext:true*/
 
+var Client = require('../lib/client');
+var contract = require('./lib/contract');
+
 suite('client', function() {
   'use strict';
 

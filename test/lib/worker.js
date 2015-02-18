@@ -1,8 +1,8 @@
 
-importScripts('../../server.js');
+importScripts('../../bridge.js');
 importScripts('./contract.js');
 
-var server = new Server(contract, {
+var server = bridge.server(contract, {
   getContact: getContact,
   testBroadcast: testBroadcast
 });

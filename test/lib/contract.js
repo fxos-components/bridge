@@ -1,5 +1,7 @@
 
-var contract = {
+var _self = typeof window != 'undefined' ? window : self;
+
+self.contract = {
   name: 'foobar',
 
   methods: {
