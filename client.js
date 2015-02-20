@@ -1,6 +1,6 @@
 (function(exports) {
 
-var debug = 1 ? console.log.bind(console, '[client]') : function() {};
+var debug = 0 ? console.log.bind(console, '[client]') : function() {};
 
 const MESSAGE_TYPES = [
   'response',
@@ -17,13 +17,15 @@ const ERRORS = {
 
 exports.Client = Client;
 
-function Client(contract, server) {
+function Client(contract) {
   this.contract = contract;
-  this.server = server;
-  this.serverType = getType(server);
-  this.env = getEnv();
-  this.send = send[this.serverType] || send.default;
-  this.listen = listen[this.serverType] || listen.default;
+
+  this.uuid = uuid();
+
+  this._queue = [];
+  this.connected = false;
+  this.connect();
+
   this.pending = {};
   this.createInterface();
   this.listen();
@@ -60,7 +62,42 @@ Client.prototype.dispatchEvent = function(e) {
   this.server.dispatchEvent(e);
 };
 
+Client.prototype.connect = function() {
+  console.log('[client] wants to connect');
+  // Let's make sure we are not asking to register multiple
+  // times.
+  if (this._waitingForConnect) {
+    return;
+  }
+  this._waitingForConnect = true;
+
+  console.log('[client] will register to the smuggler');
+  var smuggler = new BroadcastChannel('smuggler');
+  smuggler.postMessage({
+    name: 'Register',
+    type: 'client',
+    contract: this.contract,
+    uuid: this.uuid
+  });
+  smuggler.close();
+
+  this.server = new BroadcastChannel(this.uuid);
+  this.listen();
+};
+
 Client.prototype.onmessage = function(e) {
+  if (e.data === 'connected') {
+    this.onconnected();
+    return;
+  };
+
+  if (e.data === 'die') {
+    console.log('Client (' + this.contract.name + ') receive die');
+    this.connected = false;
+    this._waitingForConnect = false;
+    this.server.close();
+  };
+
   debug('on message', e, e.data);
   if (e.data.contract !== this.contract.name) return;
   if (!~MESSAGE_TYPES.indexOf(e.data.type)) return;
@@ -107,43 +144,37 @@ Client.prototype.createInterface = function() {
   }
 };
 
-var listen = {
-  sharedworker: function() {
-    debug('listening (sharedworker)');
-    this.server.port.start();
-    this.server.port.addEventListener('message', e => {
-      this.onmessage(e);
-    });
-  },
-
-  serviceworker: function() {
-    debug('listening (serviceworker)');
-    addEventListener('message', e => this.onmessage(e));
-  },
-
-  default: function() {
-    debug('listening (default)');
-    this.server.addEventListener('message', e => this.onmessage(e));
-  }
+Client.prototype.listen = function() {
+  this.server.addEventListener('message', e => this.onmessage(e));
 };
 
-var send = {
-  sharedworker: function(data) {
-    this.server.port.postMessage(data);
-  },
-
-  default: function(data) {
-    this.server.postMessage(data);
+Client.prototype.onconnected = function() {
+  this.connected = true;
+  while (this._queue.length) {
+    this.send(this._queue.shift());
   }
+  this._waitingForConnect = false;
+};
+
+Client.prototype.send = function(data) {
+  if (!this.connected) {
+
+    if (!this._waitingForConnect) {
+      this.connect();
+    }
+
+    // If the client is trying to send messages before the connection
+    // is made, then let's push the messages in a queue.
+    this._queue.push(data);
+    return;
+  }
+
+  this.server.postMessage(data);
 };
 
 /**
  * Utils
  */
-
-function getType(thing) {
-  return thing.constructor.name.toLowerCase();
-}
 
 function uuid(){
   var timestamp = Date.now();
@@ -172,17 +203,6 @@ function Deferred() {
     deferred.reject = reject;
   });
   return deferred;
-}
-
-function getEnv() {
-  var envs = {
-    'Window': 'window',
-    'SharedWorkerGlobalScope': 'sharedworker',
-    'DedicatedWorkerGlobalScope': 'worker',
-    'ServiceWorkerGlobalScope': 'serviceworker'
-  };
-
-  return envs[this.constructor.name] || 'unknown';
 }
 
 })(this);

@@ -1,6 +1,6 @@
 (function(exports) {
 
-var debug = 1 ? console.log.bind(console, '[server]') : function() {};
+var debug = 0 ? console.log.bind(console, '[server]') : function() {};
 
 /**
  * exports
@@ -15,11 +15,10 @@ const ERRORS = {
 function Server(contract, methods) {
   this.contract = contract;
   this.methods = methods;
-  this.env = getEnv();
-  this._broadcast = broadcast[this.env];
+  this._broadcast = broadcast;
   this.onmessage = this.onmessage.bind(this);
-  this.listen = listen[this.env] || listen.default;
-  this.send = send[this.env];
+  this.listen = listen;
+  this.send = send;
   this.ports = [];
   this.listen();
 }
@@ -35,7 +34,7 @@ Server.prototype.broadcast = function(name, data) {
 };
 
 Server.prototype.respond = function(request, result) {
-  debug('respond', request, result);
+  debug('respond', request.type, result);
   var response = request;
   response.result = result;
   response.type = 'response';
@@ -44,6 +43,39 @@ Server.prototype.respond = function(request, result) {
 
 Server.prototype.onmessage = function(data) {
   debug('on message', data);
+
+  // TODO: This is an ugly re-entrant message!
+  if (data === 'connected') {
+    return;
+  }
+
+  // TODO: This part should be moved out of this function.
+  if (typeof data === 'string') {
+    console.log('Opening channel: ' + data);
+    var channel = new BroadcastChannel(data);
+    channel.uuid = data;
+    this.ports.push(channel);
+
+    var uuid = data;
+    var self = this;
+    channel.onmessage = function(data) {
+      if (data.data === 'die') {
+        console.log('[server] Closing channel (' + uuid + ')  for: ' + self.contract.name);
+        channel.close();
+        return;
+      }
+
+      data.data.port = channel;
+      self.onmessage(data.data);
+    };
+
+    // TODO: This is a bit weak to say that in this simple way.
+    // Would be better is there is a set of default events for clients
+    // such as connected/disconnected.
+    channel.postMessage('connected');
+    return;
+  }
+
   if (data.contract !== this.contract.name) return;
   if (data.type !== 'request') return;
   this.onrequest(data);
@@ -59,81 +91,18 @@ Server.prototype.onrequest = function(request) {
   });
 };
 
-var listen = {
-  sharedworker: function() {
-    addEventListener('connect', (eConnect) => {
-      var port = eConnect.ports[0];
-      debug('connect', port);
-      this.ports.push(port);
-      port.start();
-      port.addEventListener('message', e => {
-        var data = e.data;
-        data.port = port;
-        this.onmessage(data);
-      });
-    });
-  },
-
-  default: function() {
-    addEventListener('message', e => this.onmessage(e.data));
-  }
+function listen() {
+  addEventListener('message', e => this.onmessage(e.data));
 };
 
-var send = {
-  worker: function(data) {
-    debug('send (worker)', data);
-    postMessage(data);
-  },
-
-  sharedworker: function(data) {
-    debug('send (sharedworker)', data);
-    var port = data.port;
-    delete data.port;
-    port.postMessage(data);
-  },
-
-  // TODO: Find a way to target one client
-  serviceworker: function(data) {
-    debug('send (serviceworker)', data);
-    clients.getAll().then(function(windows) {
-      windows.forEach(function(win) {
-        win.postMessage(data);
-      });
-    });
-  }
+function send(data) {
+  var port = data.port;
+  delete data.port;
+  port.postMessage(data);
 };
 
-var broadcast = {
-  worker: function(data) {
-    postMessage(data);
-  },
-
-  sharedworker: function(data) {
-    this.ports.forEach(port => port.postMessage(data));
-  },
-
-  serviceworker: function(data) {
-    clients.getAll().then(function(windows) {
-      windows.forEach(function(win) {
-        win.postMessage(data);
-      });
-    });
-  }
+function broadcast(data) {
+  this.ports.forEach(port => port.postMessage(data));
 };
-
-/**
- * Utils
- */
-
-function getEnv() {
-  var envs = {
-    'Window': 'window',
-    'SharedWorkerGlobalScope': 'sharedworker',
-    'DedicatedWorkerGlobalScope': 'worker',
-    'ServiceWorkerGlobalScope': 'serviceworker'
-  };
-
-  return envs[this.constructor.name] || 'unknown';
-}
 
 })(this);
