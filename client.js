@@ -1,10 +1,12 @@
-(function(exports) {
+;(function(define){define(function(require,exports,module){
 
-var debug = 0 ? console.log.bind(console, '[client]') : function() {};
+var debug = 1 ? console.log.bind(console, '[client]') : function() {};
 
 const MESSAGE_TYPES = [
+  'connected',
   'response',
-  'broadcast'
+  'broadcast',
+  'die'
 ];
 
 const ERRORS = {
@@ -15,37 +17,34 @@ const ERRORS = {
  * Exports
  */
 
-exports.Client = Client;
+module.exports = Client;
 
 function Client(contract) {
   this.contract = contract;
-
   this.uuid = uuid();
-
-  this._queue = [];
   this.connected = false;
-  this.connect();
-
+  this._queue = [];
   this.pending = {};
   this.createInterface();
-  this.listen();
+  this.connect();
   debug('initialized', this);
 }
 
 Client.prototype.request = function(method, args) {
   debug('request', method, args);
   var deferred = new Deferred();
-  var id = uuid();
+  var messageId = uuid();
   var data = {
     contract: this.contract.name,
     type: 'request',
-    uuid: id,
+    client: this.uuid,
+    uuid: messageId,
     method: method,
     args: args,
   };
 
   this.send(data);
-  this.pending[id] = deferred;
+  this.pending[messageId] = deferred;
   return deferred.promise;
 };
 
@@ -63,45 +62,37 @@ Client.prototype.dispatchEvent = function(e) {
 };
 
 Client.prototype.connect = function() {
-  console.log('[client] wants to connect');
-  // Let's make sure we are not asking to register multiple
-  // times.
-  if (this._waitingForConnect) {
-    return;
-  }
+  debug('connect');
+
+  // Let's make sure we are not asking
+  // to register multiple times.
+  if (this._waitingForConnect) return;
   this._waitingForConnect = true;
 
-  console.log('[client] will register to the smuggler');
+  debug('will register to the smuggler');
   var smuggler = new BroadcastChannel('smuggler');
   smuggler.postMessage({
-    name: 'Register',
-    type: 'client',
-    contract: this.contract,
-    uuid: this.uuid
+    type: 'connect',
+    contract: this.contract.name,
+    client: this.uuid
   });
-  smuggler.close();
 
+  smuggler.close();
   this.server = new BroadcastChannel(this.uuid);
-  this.listen();
+  this.server.onmessage = this.onmessage.bind(this);
 };
 
 Client.prototype.onmessage = function(e) {
-  if (e.data === 'connected') {
-    this.onconnected();
-    return;
-  };
-
-  if (e.data === 'die') {
-    console.log('Client (' + this.contract.name + ') receive die');
-    this.connected = false;
-    this._waitingForConnect = false;
-    this.server.close();
-  };
-
-  debug('on message', e, e.data);
-  if (e.data.contract !== this.contract.name) return;
+  debug('on message', e);
   if (!~MESSAGE_TYPES.indexOf(e.data.type)) return;
   this['on' + e.data.type](e.data);
+};
+
+Client.prototype.ondie = function(data) {
+  debug('on die', this.contract.name);
+  this.connected = false;
+  this._waitingForConnect = false;
+  this.server.close();
 };
 
 Client.prototype.onresponse = function(data) {
@@ -144,11 +135,8 @@ Client.prototype.createInterface = function() {
   }
 };
 
-Client.prototype.listen = function() {
-  this.server.addEventListener('message', e => this.onmessage(e));
-};
-
 Client.prototype.onconnected = function() {
+  debug('connected');
   this.connected = true;
   while (this._queue.length) {
     this.send(this._queue.shift());
@@ -205,4 +193,7 @@ function Deferred() {
   return deferred;
 }
 
-})(this);
+});})(typeof define=='function'&&define.amd?define
+:(function(n,w){return typeof module=='object'?function(c){
+c(require,exports,module);}:function(c){var m={exports:{}};c(function(n){
+return w[n];},m.exports,m);w[n]=m.exports;};})('runtime-bridge-client',this));
