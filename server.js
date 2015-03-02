@@ -1,108 +1,152 @@
 (function(exports) {
+'use strict';
 
-var debug = 0 ? console.log.bind(console, '[server]') : function() {};
-
-/**
- * exports
- */
-
-exports.Server = Server;
-
-const ERRORS = {
-  1: 'Method not defined in the contract'
-};
-
-function Server(contract, methods) {
-  this.contract = contract;
-  this.methods = methods;
-  this._broadcast = broadcast;
-  this.onmessage = this.onmessage.bind(this);
-  this.listen = listen;
-  this.send = send;
-  this.ports = [];
-  this.listen();
+function ServerFactory(name, version, methods) {
+  return createServer(name, version, methods);
 }
 
-Server.prototype.broadcast = function(name, data) {
-  debug('broadcast', name, data);
-  this._broadcast({
-    contract: this.contract.name,
-    type: 'broadcast',
-    name: name,
-    data: data
-  });
+const kErrors = {
+  ContractNotImplemented: 'Contract method not implemented: ',
+  ContractNotDeclared: 'Method not defined in the contract: '
 };
 
-Server.prototype.respond = function(request, result) {
-  debug('respond', request.type, result);
-  var response = request;
-  response.result = result;
-  response.type = 'response';
-  this.send(response);
-};
+/*
+  This object will be fed lazyly with server contracts.
+*/
+self.contracts = self.contracts || {};
 
-Server.prototype.onmessage = function(data) {
-  debug('on message', data);
+function createServer(name, version, methods) {
+  /*
+   * ServerInternal
+   */
+  function ServerInternal(server, methods) {
+    this.server = server;
+    this.methods = methods;
 
-  // TODO: This is an ugly re-entrant message!
-  if (data === 'connected') {
-    return;
+    this.enforceContract();
+
+    this.ports = [];
+    this.listen();
   }
 
-  // TODO: This part should be moved out of this function.
-  if (typeof data === 'string') {
-    console.log('Opening channel: ' + data);
-    var channel = new BroadcastChannel(data);
-    channel.uuid = data;
+  ServerInternal.prototype.onglobalmessage = function(data) {
+    if (data.contract !== this.server.name) {
+      return;
+    }
+
+    this.registerClient(data.uuid);
+  };
+
+  ServerInternal.prototype.registerClient = function(id) {
+    var channel = new BroadcastChannel(id);
     this.ports.push(channel);
 
-    var uuid = data;
-    var self = this;
-    channel.onmessage = function(data) {
-      if (data.data === 'die') {
-        console.log('[server] Closing channel (' + uuid + ')  for: ' + self.contract.name);
-        channel.close();
-        return;
-      }
+    channel.postMessage({
+      type: 'connected',
+      interface: this.getContract()
+    });
 
-      data.data.port = channel;
-      self.onmessage(data.data);
+    channel.addEventListener(
+      'message',
+      e => this.onmessage.call(this, channel, e.data)
+    );
+  };
+
+  ServerInternal.prototype.onmessage = function(port, data) {
+    debug('onmessage: ' + data);
+
+    var fn = this.methods[data.method];
+    if (!fn) {
+      throw new Error(kErrors.ContractNotDeclared + data.method);
+    }
+
+    var args = data.args || [];
+
+    data.port = port;
+    Promise.resolve(fn.apply(null, args)).then((result) => {
+      this.respond(data, result);
+    });
+  };
+
+  ServerInternal.prototype.respond = function(request, result) {
+    debug('respond', result);
+
+    var response = request;
+    response.result = result;
+    this.send(response);
+  };
+
+  ServerInternal.prototype.send = function(data) {
+    var port = data.port;
+    delete data.port;
+    port.postMessage(data);
+  };
+
+  ServerInternal.prototype.broadcast = function(packet) {
+    this.ports.forEach(port => port.postMessage(packet));
+  };
+
+  ServerInternal.prototype.listen = function() {
+    addEventListener('message', e => this.onglobalmessage(e.data));
+  };
+
+  ServerInternal.prototype.enforceContract = function() {
+    var contract = this.getContract();
+
+    // Ensure that all contracts methods are implemented.
+    for (var method in contract.methods) {
+      if (!(method in this.methods)) {
+        throw new Error(kErrors.ContractNotImplemented + method);
+      }
     };
 
-    // TODO: This is a bit weak to say that in this simple way.
-    // Would be better is there is a set of default events for clients
-    // such as connected/disconnected.
-    channel.postMessage('connected');
-    return;
+    // Ensure that only contracts methods are implemented.
+    for (var method in this.methods) {
+      if (!(method in contract.methods)) {
+        throw new Error(kErrors.ContractNotDeclared + method);
+      }
+    }
+  };
+
+  ServerInternal.prototype.getContract = function() {
+    if (!(this.server.name in self.contracts)) {
+      importScripts('contracts/' + this.server.name + '.js');
+    }
+
+    return self.contracts[this.server.name];
+  };
+
+
+  /*
+   * Server
+   */
+  function Server(name, version) {
+    this.name = name;
+    this.version = version;
   }
 
-  if (data.contract !== this.contract.name) return;
-  if (data.type !== 'request') return;
-  this.onrequest(data);
-};
+  Server.prototype.broadcast = function(name, data) {
+    internal.broadcast({
+      type: 'broadcast',
+      name: name,
+      data: data
+    });
+  };
 
-Server.prototype.onrequest = function(request) {
-  debug('on request', request);
-  var fn = this.methods[request.method];
-  var args = request.args || [];
-  if (!fn) throw new Error(ERRORS[1]);
-  Promise.resolve(fn.apply(null, args)).then((result) => {
-    this.respond(request, result);
-  });
-};
+  var server = new Server(name, version);
+  var internal = new ServerInternal(server, methods);
 
-function listen() {
-  addEventListener('message', e => this.onmessage(e.data));
-};
+  return server;
+}
 
-function send(data) {
-  var port = data.port;
-  delete data.port;
-  port.postMessage(data);
-};
 
-function broadcast(data) {
-  this.ports.forEach(port => port.postMessage(data));
-};
+/*
+ * Utils
+ */
+function debug() {
+  //console.log.bind(console, '[server]').apply(console, arguments);
+}
 
+
+exports.Server = ServerFactory;
 })(this);

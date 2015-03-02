@@ -1,180 +1,284 @@
 (function(exports) {
+'use strict';
 
-var debug = 0 ? console.log.bind(console, '[client]') : function() {};
-
-const MESSAGE_TYPES = [
-  'response',
-  'broadcast'
-];
-
-const ERRORS = {
-  1: 'Event not defined in the contract'
-};
-
-/**
- * Exports
- */
-
-exports.Client = Client;
-
-function Client(contract) {
-  this.contract = contract;
-
-  this.uuid = uuid();
-
-  this._queue = [];
-  this.connected = false;
-  this.connect();
-
-  this.pending = {};
-  this.createInterface();
-  this.listen();
-  debug('initialized', this);
+function ClientFactory(name, version) {
+  return createNewClient(name, version);
 }
 
-Client.prototype.request = function(method, args) {
-  debug('request', method, args);
-  var deferred = new Deferred();
-  var id = uuid();
-  var data = {
-    contract: this.contract.name,
-    type: 'request',
-    uuid: id,
-    method: method,
-    args: args,
-  };
+const kErrors = {
+  NotImplemented: 'Not Implemented.',
+  NoPromise: 'No Promise Found.'
+}
 
-  this.send(data);
-  this.pending[id] = deferred;
-  return deferred.promise;
-};
+function createNewClient(name, version) {
+  /*
+   * Global variables
+   */
+  var pendings = {};
 
-Client.prototype.addEventListener = function(name, fn) {
-  if (!this.contract.events[name]) throw new Error(ERRORS[1]);
-  this.server.addEventListener('broadcast:' + name, fn);
-};
 
-Client.prototype.removeEventListener = function(name, fn) {
-  this.server.removeEventListener('broadcast:' + name, fn);
-};
-
-Client.prototype.dispatchEvent = function(e) {
-  this.server.dispatchEvent(e);
-};
-
-Client.prototype.connect = function() {
-  console.log('[client] wants to connect');
-  // Let's make sure we are not asking to register multiple
-  // times.
-  if (this._waitingForConnect) {
-    return;
-  }
-  this._waitingForConnect = true;
-
-  console.log('[client] will register to the smuggler');
-  var smuggler = new BroadcastChannel('smuggler');
-  smuggler.postMessage({
-    name: 'Register',
-    type: 'client',
-    contract: this.contract,
-    uuid: this.uuid
-  });
-  smuggler.close();
-
-  this.server = new BroadcastChannel(this.uuid);
-  this.listen();
-};
-
-Client.prototype.onmessage = function(e) {
-  if (e.data === 'connected') {
-    this.onconnected();
-    return;
-  };
-
-  if (e.data === 'die') {
-    console.log('Client (' + this.contract.name + ') receive die');
-    this.connected = false;
-    this._waitingForConnect = false;
-    this.server.close();
-  };
-
-  debug('on message', e, e.data);
-  if (e.data.contract !== this.contract.name) return;
-  if (!~MESSAGE_TYPES.indexOf(e.data.type)) return;
-  this['on' + e.data.type](e.data);
-};
-
-Client.prototype.onresponse = function(data) {
-  debug('on response', data);
-  var uuid = data.uuid;
-  var promise = this.pending[uuid];
-  if (!promise) throw new Error('no promise found');
-  delete this.pending[uuid];
-  promise.resolve(data.result);
-};
-
-Client.prototype.onbroadcast = function(data) {
-  debug('on broadcast', data);
-  var e = new Event('broadcast:' + data.name);
-  e.data = data.data;
-  this.server.dispatchEvent(e);
-};
-
-Client.prototype.createInterface = function() {
-  debug('setup interface');
-  var methods = this.contract.methods;
-  var self = this;
-
-  for (var method in methods) {
-    this[method] = createMethod(method, methods[method]);
+  /*
+   * Registration
+   */
+  function Registration(client, uuid) {
+    var kRegistrationChannelName = 'smuggler';
+    var smuggler = new BroadcastChannel(kRegistrationChannelName);
+    smuggler.postMessage({
+      name: 'Register',
+      type: 'client',
+      contract: client.name,
+      version: client.version,
+      uuid: uuid
+    });
+    smuggler.close();
   }
 
-  function createMethod(name, definition) {
-    debug('create method', name, definition);
-    return function() {
-      var args = [].slice.call(arguments);
-      var invalidLength = args.length !== definition.args.length;
-      var invalidType = !typesMatch(args, definition.args);
-      if (invalidLength || invalidType) {
-        throw new Error(name + '() called with invalid argument');
-      }
 
-      return self.request(name, args);
+  /*
+   * Packet
+   */
+  function Packet(id, method, args) {
+    return {
+      uuid: id,
+      method: method,
+      args: args,
     };
   }
-};
 
-Client.prototype.listen = function() {
-  this.server.addEventListener('message', e => this.onmessage(e));
-};
 
-Client.prototype.onconnected = function() {
-  this.connected = true;
-  while (this._queue.length) {
-    this.send(this._queue.shift());
+  /*
+   * Deferred
+   */
+  function Deferred() {
+    var deferred = {};
+    deferred.promise = new Promise(function(resolve, reject) {
+      deferred.resolve = resolve;
+      deferred.reject = reject;
+    });
+    return deferred;
   }
-  this._waitingForConnect = false;
-};
 
-Client.prototype.send = function(data) {
-  if (!this.connected) {
 
-    if (!this._waitingForConnect) {
-      this.connect();
+  /*
+   * RemotePrototype
+   */
+  function RemotePrototype() {
+    var self = this;
+
+    var prototype = {
+      get: function(target, method) {
+        return self.invoke(method);
+      }
+    };
+
+    return new Proxy({}, prototype);
+  }
+
+  RemotePrototype.prototype.invoke = function(method) {
+    return function() {
+      var id = uuid();
+      var packet = new Packet(id, method, [].slice.call(arguments));
+
+      var deferred = new Deferred();
+      pendings[id] = {
+        packet: packet,
+        deferred: deferred
+      }
+      return deferred.promise;
+    }
+  };
+
+  /*
+   * ClientInternal
+   */
+  function ClientInternal(client) {
+    this.client = client;
+    this.uuid = uuid();
+
+    this.server = null;
+    this.connect();
+  }
+
+  ClientInternal.prototype.connect = function() {
+    new Registration(this.client, this.uuid);
+    this.server = new BroadcastChannel(this.uuid);
+    this.listen();
+  };
+
+  ClientInternal.prototype.onconnected = function(contract) {
+    debug(this.client.name + ' [connected]');
+
+    this.connected = true;
+
+    for (var id in pendings) {
+      this.send(pendings[id].packet);
+      pendings[id] = pendings[id].deferred;
     }
 
-    // If the client is trying to send messages before the connection
-    // is made, then let's push the messages in a queue.
-    this._queue.push(data);
-    return;
-  }
+    mutatePrototype(this.client, this.createPrototype(contract));
+  };
 
-  this.server.postMessage(data);
-};
+  ClientInternal.prototype.disconnect = function() {
+    throw new Error(kErrors.NotImplemented);
+  };
 
-/**
+  ClientInternal.prototype.ondisconnected = function() {
+    throw new Error(kErrors.NotImplemented);
+  };
+
+  ClientInternal.prototype.listen = function() {
+    this.server.addEventListener('message', e => this.onmessage(e));
+  };
+
+  ClientInternal.prototype.addEventListener = function(name, fn) {
+    this.server.addEventListener('broadcast:' + name, fn);
+  };
+
+  ClientInternal.prototype.removeEventListener = function(name, fn) {
+    this.server.removeEventListener('broadcast:' + name, fn);
+  };
+
+  ClientInternal.prototype.dispatchEvent = function(e) {
+    this.server.dispatchEvent(e);
+  };
+
+  ClientInternal.prototype.send = function(packet) {
+    debug('send', packet);
+    this.server.postMessage(packet);
+  };
+
+  ClientInternal.prototype.request = function(method, args) {
+    debug('request', method, args);
+
+    var id = uuid();
+    var packet = new Packet(id, method, args);
+    this.send(packet);
+
+    var deferred = new Deferred();
+    pendings[id] = deferred;
+    return deferred.promise;
+  };
+
+  ClientInternal.prototype.onresponse = function(packet) {
+    debug('on response', packet);
+
+    var id = packet.uuid;
+    var promise = pendings[id];
+    if (!promise) {
+      throw new Error(KErrors.NoPromise);
+    }
+    delete pendings[id];
+
+    promise.resolve(packet.result);
+  };
+
+  ClientInternal.prototype.onmessage = function(e) {
+    debug('on message', e, e.data);
+
+    switch (e.data.type) {
+      case 'connected':
+        this.onconnected(e.data.interface);
+        break;
+
+      case 'disconnected':
+        this.ondisconnected();
+        break;
+
+      case 'broadcast':
+        this.onbroadcast(e.data);
+        break;
+
+      default:
+        this.onresponse(e.data);
+        break;
+    }
+  };
+
+  ClientInternal.prototype.onbroadcast = function(packet) {
+    debug('on broadcast', packet);
+
+    var e = new CustomEvent('broadcast:' + packet.name);
+    e.data = packet.data;
+    this.server.dispatchEvent(e);
+  };
+
+  ClientInternal.prototype.createInterface = function() {
+    throw new Error(kErrors.NotImplemented);
+  };
+
+  ClientInternal.prototype.createPrototype = function(contract) {
+    var prototype = {};
+    for (var name in contract.methods) {
+      prototype[name] = createMethod(name, contract.methods[name]);
+    }
+
+    var self = this;
+    function createMethod(name, definition) {
+      debug('create method', name, definition);
+      return function() {
+        // XXX Most of those checks should be performed on the server side.
+        var args = [].slice.call(arguments);
+        var invalidLength = args.length !== definition.args.length;
+        var invalidType = !typesMatch(args, definition.args);
+        if (invalidLength || invalidType) {
+          throw new Error(name + '() called with invalid argument');
+        }
+
+        return self.request(name, args);
+      };
+    }
+
+    return prototype;
+  };
+
+
+  /*
+   * Client
+   */
+  function Client(name, version) {
+    this.name = name;
+    this.version = version;
+
+    mutatePrototype(this, new RemotePrototype());
+  };
+
+  Client.prototype.addEventListener = function(name, fn) {
+    internal.addEventListener(name, fn);
+  };
+
+  Client.prototype.removeEventListener = function(name, fn) {
+    internal.removeEventListener(name, callback);
+  };
+
+
+  var client = new Client(name, version);
+  var internal = new ClientInternal(client);
+
+  return client;
+}
+
+
+/*
  * Utils
  */
+
+function debug() {
+  //console.log.bind(console, '[client]').apply(console, arguments);
+}
+
+function mutatePrototype(object, prototype) {
+  Object.setPrototypeOf(Object.getPrototypeOf(object), prototype);
+}
+
+function typesMatch(args, types) {
+  for (var i = 0, l = args.length; i < l; i++) {
+    if (typeof args[i] !== types[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 function uuid(){
   var timestamp = Date.now();
@@ -188,21 +292,5 @@ function uuid(){
   );
 }
 
-function typesMatch(args, types) {
-  for (var i = 0, l = args.length; i < l; i++) {
-    if (typeof args[i] !== types[i]) return false;
-  }
-
-  return true;
-}
-
-function Deferred() {
-  var deferred = {};
-  deferred.promise = new Promise(function(resolve, reject) {
-    deferred.resolve = resolve;
-    deferred.reject = reject;
-  });
-  return deferred;
-}
-
+exports.Client = ClientFactory;
 })(this);
