@@ -165,7 +165,7 @@ function createNewClient(name, version) {
     var id = packet.uuid;
     var promise = pendings[id];
     if (!promise) {
-      throw new Error(KErrors.NoPromise);
+      throw new Error(kErrors.NoPromise);
     }
     delete pendings[id];
 
