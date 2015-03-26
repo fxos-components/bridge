@@ -3,11 +3,11 @@ module.exports = function(config) {
   config.set({
     frameworks: ['mocha', 'sinon-chai'],
     browsers: ['firefox_latest'],
+    basePath: '../',
     client: {
       captureConsole: true,
       mocha: { 'ui': 'tdd' }
     },
-    basePath: '../',
 
     customLaunchers: {
       firefox_latest: {
@@ -17,14 +17,21 @@ module.exports = function(config) {
     },
 
     files: [
-      'client.js',
-      'server.js',
-      'test/lib/contract.js',
+      'bower_components/alameda/alameda.js',
+      'test/setup.js',
       {
-        pattern: 'test/lib/worker.js',
+        pattern: 'threads.js',
         included: false
       },
-      'test/test.js'
+      {
+        pattern: 'lib/*',
+        included: false
+      },
+      {
+        pattern: 'test/lib/*',
+        included: false
+      },
+      'test/client.test.js'
     ]
   });
 };

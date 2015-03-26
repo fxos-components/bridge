@@ -1,6 +1,7 @@
+define(function(require, exports, module) {
 
-var contract = {
-  name: 'foobar',
+module.exports = {
+  name: 'view-server',
 
   methods: {
     getContact: {
@@ -18,3 +19,8 @@ var contract = {
     someeventname: 'object',
   }
 };
+
+});
+
+
+
