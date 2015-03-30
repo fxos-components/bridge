@@ -1,10 +1,9 @@
+/*global threads*/
 
-importScripts('../../bower_components/alameda/alameda.js');
 
-require.config({ baseUrl: '../../' });
+importScripts('../../threads.js');
 
-require(['threads'], function(threads) {
-  try {
+try {
 
   threads.service('view-server', {
     getData: function(id) {
@@ -15,8 +14,4 @@ require(['threads'], function(threads) {
 } catch(e) {
   console.log(e);
 }
-
-});
-
-
 

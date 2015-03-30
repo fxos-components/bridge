@@ -1,15 +1,7 @@
-/*global assert,suite,suiteSetup,setup,teardown,sinon,test*/
+/*global threads,assert,suite,setup,teardown,sinon,test*/
 /*jshint esnext:true*/
 
 suite('client', function() {
-  var threads;
-
-  suiteSetup(function(done) {
-    require(['threads'], function(_threads) {
-      threads = _threads;
-      done();
-    });
-  });
 
   setup(function() {
     this.sinon = sinon.sandbox.create();
@@ -24,7 +16,6 @@ suite('client', function() {
 
   suite.only('latest', function() {
     setup(function() {
-
       this.manager = threads.manager({
         'view-server': {
           src: '/base/test/lib/thread.js',
@@ -43,16 +34,28 @@ suite('client', function() {
       this.thread = threads.client('view-server');
     });
 
-    // teardown(function() {
-    //   this.thread.disconnect();
-    // });
+    teardown(function(done) {
+      this.thread.disconnect().then(done, done);
+    });
 
-    test('...', function(done) {
+    test('simple call', function(done) {
       this.thread.call('getData').then(data => {
         assert.deepEqual(data, { some: 'data' });
         done();
       });
     });
+  });
+
+  suite('contracts', function() {
+
+  });
+
+  suite('disconnect', function() {
+
+  });
+
+  suite('events', function() {
+
   });
 
   suite.skip('dynamic threads', function() {
@@ -62,15 +65,15 @@ suite('client', function() {
     // postmessage the process directly to establish
     // a connection
     test('...', function(done) {
-      this.manager = threads.manager();
-
-      this.thread = this.manager.client('little-browser-frame', {
+      var thread = threads.create({
         src: '/base/test/lib/view.html',
-        env: 'window',
+        type: 'window',
         parentNode: this.dom
       });
 
-      this.thread.call('getTitle').then(title => {
+      var client = thread.client('little-browser-frame', { thread: thread });
+
+      client.call('getTitle').then(title => {
         assert.equal(title, 'view-title');
       });
     });
