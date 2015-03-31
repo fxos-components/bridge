@@ -1,12 +1,13 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.threads = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 
 module.exports = {
-  client: require('./lib/client'),
+  create: require('./lib/child-thread'),
   manager: require('./lib/manager'),
-  service: require('./lib/service')
+  service: require('./lib/service'),
+  client: require('./lib/client')
 };
 
-},{"./lib/client":3,"./lib/manager":5,"./lib/service":7}],2:[function(require,module,exports){
+},{"./lib/child-thread":2,"./lib/client":3,"./lib/manager":5,"./lib/service":6}],2:[function(require,module,exports){
 
 'use strict';
 
@@ -21,14 +22,14 @@ var utils = require('./utils');
  * Exports
  */
 
-module.exports = ChildProcess;
+module.exports = ChildThread;
 
 /**
  * Mini debugger
  * @type {Function}
  */
 
-var debug = 1 ? console.log.bind(console, '[child-process]') : function() {};
+var debug = 1 ? console.log.bind(console, '[ChildThread]') : function() {};
 
 /**
  * Error messages
@@ -47,27 +48,30 @@ const KNOWN_MESSAGES = [
  * Extends `Emitter`
  */
 
-ChildProcess.prototype = Object.create(emitter.prototype);
+ChildThread.prototype = Object.create(emitter.prototype);
 
-function ChildProcess(params) {
+function ChildThread(params) {
+  if (!(this instanceof ChildThread)) return new ChildThread(params);
   this.id = utils.uuid();
   this.src = params.src;
   this.type = params.type;
   this.parentNode = params.parentNode;
+  this.servicesReady = {};
   this.onmessage = utils.message.handler(this.id, KNOWN_MESSAGES).bind(this);
+  this.on('serviceready', this.onserviceready.bind(this));
   this.process = this.createProcess();
   this.listen();
-  debug('initialized', this);
+  debug('initialized');
 }
 
-ChildProcess.prototype.createProcess = function() {
+ChildThread.prototype.createProcess = function() {
   switch(this.type) {
     case 'worker':
       return new Worker(this.src + '?pid=' + this.id);
     case 'sharedworker':
       return new SharedWorker(this.src + '?pid=' + this.id);
     case 'window':
-      if (utils.env() != 'window') throw new Error(ERRORS[1]);
+      if (utils.env() !== 'window') throw new Error(ERRORS[1]);
       var iframe = document.createElement('iframe');
       (this.parentNode || document.body).appendChild(iframe);
       iframe.name = this.id;
@@ -76,7 +80,19 @@ ChildProcess.prototype.createProcess = function() {
   }
 };
 
-ChildProcess.prototype.listen = function() {
+ChildThread.prototype.isReady = function(service) {
+  return !!this.servicesReady[service];
+};
+
+ChildThread.prototype.postMessage = function(message) {
+  switch(this.type) {
+    case 'worker': this.process.postMessage(message); break;
+    case 'sharedworker': this.process.port.postMessage(message); break;
+    case 'window': this.process.contentWindow.postMessage(message, '*'); break;
+  }
+};
+
+ChildThread.prototype.listen = function() {
   switch(this.type) {
     case 'worker':
       this.process.addEventListener('message', this.onmessage);
@@ -90,7 +106,7 @@ ChildProcess.prototype.listen = function() {
   }
 };
 
-ChildProcess.prototype.unlisten = function() {
+ChildThread.prototype.unlisten = function() {
   switch(this.type) {
     case 'worker':
       this.process.removeEventListener('message', this.onmessage);
@@ -104,23 +120,26 @@ ChildProcess.prototype.unlisten = function() {
   }
 };
 
-ChildProcess.prototype.onbroadcast = function(broadcast) {
+ChildThread.prototype.onbroadcast = function(broadcast) {
   debug('on broadcast', broadcast);
   this.emit(broadcast.type, broadcast.data);
 };
 
-ChildProcess.prototype.destroy = function() {
+ChildThread.prototype.onserviceready = function(service) {
+  debug('on service ready', service);
+  this.servicesReady[service.name] = service;
+};
+
+ChildThread.prototype.destroy = function() {
   this.unlisten();
   this.destroyProcess();
 };
 
-ChildProcess.prototype.destroyProcess = function() {
+ChildThread.prototype.destroyProcess = function() {
   switch(this.type) {
-    case 'worker':
-    case 'sharedworker':
-      this.process.terminate(); break;
-    case 'window':
-      this.process.remove(); break;
+    case 'worker': this.process.terminate(); break;
+    case 'sharedworker': this.process.port.close(); break;
+    case 'window': this.process.remove(); break;
   }
 };
 
@@ -132,25 +151,9 @@ ChildProcess.prototype.destroyProcess = function() {
  * Dependencies
  */
 
+var thread = require('./thread-global');
 var Emitter = require('./emitter');
-var thread = require('./monitor');
 var utils = require('./utils');
-
-
-var manager = new BroadcastChannel('threadsmanager');
-
-/**
- * Simple logger
- *
- * @type {Function}
- */
-var debug = 1 ? console.log.bind(console, '[client]') : function() {};
-
-const KNOWN_MESSAGES = [
-  'response',
-  'broadcast',
-  'connected'
-];
 
 /**
  * Exports
@@ -159,86 +162,123 @@ const KNOWN_MESSAGES = [
 module.exports = Client;
 
 /**
+ * Global 'manager' channel
+ * @type {BroadcastChannel}
+ */
+var manager = new BroadcastChannel('threadsmanager');
+
+/**
+ * Simple logger
+ * @type {Function}
+ */
+var debug = 1 ? console.log.bind(console, '[client]') : function() {};
+
+/**
+ * Allowed message types
+ * @type {Array}
+ */
+const KNOWN_MESSAGES = [
+  'response',
+  'broadcast',
+  'connected'
+];
+
+/**
  * Extend `Emitter`
  */
 
 Client.prototype = Object.create(Emitter.prototype);
 
-function Client(service) {
-  if (!(this instanceof Client)) return new Client(service);
+function Client(service, options) {
+  if (!(this instanceof Client)) return new Client(service, options);
+  this.contract = options && options.contract;
+  this.thread = options && options.thread;
   this.id = utils.uuid();
   this.connected = false;
   this.requests = {};
   this.requestQueue = [];
+
   this.service = {
     channel: undefined,
     name: service,
     id: undefined
   };
 
-  this.send = utils.message.sender(thread.id, this.id, 'client');
+  this.Message = utils.message.factory(this.id);
   this.onmessage = utils.message.handler(this.id, KNOWN_MESSAGES).bind(this);
   manager.addEventListener('message', this.onmessage);
-  this.connect();
 
+  // If this client is directly linked to the thread
+  // then listen for messages directly from that thread
+  if (this.thread) this.thread.on('message', this.onmessage);
+
+  this.connect();
   debug('initialize', service);
 }
 
 Client.prototype.connect = function() {
-  if (this.connected) return;
   debug('connect');
+  if (this.connected) return;
 
-  // Create a pipe ready for the service to open
+  // Create a pipe ready for the
+  // service to send messages down
   this.service.channel = new BroadcastChannel(this.id);
   this.service.channel.onmessage = this.onmessage;
+
+  if (this.thread) this.connectViaThread();
+  else this.connectViaManager();
+};
+
+Client.prototype.connectViaThread = function() {
+  debug('connect via thread');
+  var self = this;
+
+  // Check that the service we're looking
+  // for is ready on the target thread.
+  if (!this.thread.isReady(this.service.name)) {
+    this.thread.on('serviceready', function fn(service) {
+      debug('service ready', service);
+      if (service.name !== self.service.name) return;
+      self.thread.off('serviceready', fn);
+      self.service.id = service.id;
+      self.connectViaThread();
+    });
+  }
+
+  this.thread.postMessage(new this.Message('connect', {
+    recipient: this.service.id,
+    data: {
+      client: this.id,
+      contract: this.contract
+    }
+  }));
+};
+
+Client.prototype.connectViaManager = function() {
+  debug('connect via manager');
 
   // Send a message to the threads
   // manager to indicate that this
   // process wants to connect with
   // a particular service.
-  this.send(manager, 'connect', {
+  manager.postMessage(new this.Message('connect', {
     recipient: 'threadsmanager',
     data: {
       service: this.service.name,
       client: this.id
     },
-  });
-};
-
-Client.prototype.onconnected = function(service) {
-  debug('connected', service);
-  this.service.id = service.id;
-  this.connected = true;
-  this.flushRequestQueue();
-  thread.connection('outbound');
+  }));
 };
 
 Client.prototype.disconnect = function() {
   // if (!this.connected) deferred.reject('not connected');
   debug('disconnect');
-  return this.request(this.service.channel, 'disconnect', this.id)
+  return this.request('disconnect', this.id)
     .then(r => this.ondisconnected(r));
 };
 
-Client.prototype.ondisconnected = function() {
-  debug('disconnected');
-
-  // Ping the service one last time to let it
-  // know that we've disconnected client-side
-  this.send(this.service.channel, 'disconnected', {
-    recipient: this.service.id,
-    data: this.id
-  });
-
-  this.service.channel.close();
-  delete this.service.channel;
-  delete this.service.id;
-  this.connected = false;
-  thread.disconnection('outbound');
-};
-
-Client.prototype.request = function(channel, type, data) {
-  debug('request', channel, type, data);
+Client.prototype.request = function(type, data) {
+  debug('request', type, data);
   var deferred = utils.deferred();
 
   // If the client isn't yet connected,
@@ -255,9 +295,7 @@ Client.prototype.request = function(channel, type, data) {
   }
 
   var requestId = utils.uuid();
-  this.requests[requestId] = deferred;
-
-  this.send(channel, 'request', {
+  var message = new this.Message('request', {
     recipient: this.service.id,
     data: {
       type: type,
@@ -267,33 +305,67 @@ Client.prototype.request = function(channel, type, data) {
     }
   });
 
+  this.requests[requestId] = deferred;
+  this.service.channel.postMessage(message);
   return deferred.promise;
 };
 
-/**
- * The response should define
- * whether the Promise was resolved
- * or rejected by the service.
- */
+Client.prototype.onconnected = function(service) {
+  debug('connected', service);
+  this.service.id = service.id;
+  this.connected = true;
+  this.flushRequestQueue();
+  thread.connection('outbound');
+};
+
 Client.prototype.onresponse = function(response) {
   debug('on response', response);
   var request = response.request;
   var promise = this.requests[request.id];
   if (!promise) return;
 
+  var result = response.result;
   var method = {
     'fulfilled': 'resolve',
     'rejected': 'reject'
-  }[response.result.state];
+  }[result.state];
 
-  promise[method](response.result.value);
+  // The value resided under a different
+  // key depending on whether the promise
+  // was 'rejected' or 'resolved'
+  var value = result.value || result.reason;
+  promise[method](value);
+
+  // Clean up
   delete this.requests[request.id];
+};
+
+Client.prototype.onbroadcast = function(broadcast) {
+  debug('on broadcast', broadcast);
+  this.emit(broadcast.type, broadcast.data);
+};
+
+Client.prototype.ondisconnected = function() {
+  debug('disconnected');
+
+  // Ping the service one last time to let it
+  // know that we've disconnected client-side
+  this.service.channel.postMessage(new this.Message('disconnected', {
+    recipient: this.service.id,
+    data: this.id
+  }));
+
+  this.service.channel.close();
+  delete this.service.channel;
+  delete this.service.id;
+  this.connected = false;
+  thread.disconnection('outbound');
 };
 
 Client.prototype.call = function(method) {
   var args = [].slice.call(arguments, 1);
   debug('call', method, args);
-  return this.request(this.service.channel, 'method', {
+  return this.request('method', {
     name: method,
     args: args
   });
@@ -308,7 +380,7 @@ Client.prototype.flushRequestQueue = function() {
   }
 };
 
-},{"./emitter":4,"./monitor":6,"./utils":8}],4:[function(require,module,exports){
+},{"./emitter":4,"./thread-global":7,"./utils":8}],4:[function(require,module,exports){
 
 /**
  * Exports
@@ -354,9 +426,8 @@ Emitter.prototype = {
  * Dependencies
  */
 
-var ChildProcess = require('./child-process');
+var ChildThread = require('./child-thread');
 var emitter = require('./emitter').prototype;
-var thread = require('./monitor');
 var utils = require('./utils');
 
 /**
@@ -369,7 +440,7 @@ module.exports = Manager;
  * Locals
  */
 
-var debug = 0 ? console.log.bind(console, '[manager]') : function() {};
+var debug = 1 ? console.log.bind(console, '[Manager]') : function() {};
 var channel = new BroadcastChannel('threadsmanager');
 
 const KNOWN_MESSAGES = [
@@ -392,7 +463,7 @@ function Manager(definitions) {
   this.activeServices = {};
   this.registry = {};
 
-  this.send = utils.message.sender(thread.id, this.id, 'manager');
+  this.Message = utils.message.factory(this.id);
 
   // Listen on window and broadcast-channel so
   // that manager can run in same thread as Client.
@@ -432,32 +503,35 @@ Manager.prototype.messageRead = function(id) {
   this.readMessages.shift();
 };
 
+/**
+ * Run when a client attempts to connect.
+ *
+ * If a contract is found in the service
+ * descriptor we pass it to the service
+ * along with the connect request.
+ *
+ * @param  {Object} data {service,client,contract}
+ * @private
+ */
 Manager.prototype.onconnect = function(data) {
   debug('on connect', data);
   var descriptor = this.registry[data.service];
   if (!descriptor) return debug('"%s" not managed here', data.service);
   this.getProcess(descriptor).then(service => {
-    this.connect(service.id, data.client);
+    this.connect(service.id, data.client, descriptor.contract);
   });
 };
 
-Manager.prototype.connect = function(serviceId, clientId) {
-  this.send(channel, 'connect', {
-    recipient: serviceId,
-    data: clientId
-  });
+Manager.prototype.connect = function(service, client, contract) {
+  debug('connect', service, client, contract);
+  channel.postMessage(new this.Message('connect', {
+    recipient: service,
+    data: {
+      client: client,
+      contract: contract
+    }
+  }));
 };
-
-// Manager.prototype.send = function(type, params) {
-//   debug('send', type, params);
-//   channel.postMessage({
-//     id: utils.uuid(),
-//     type: type,
-//     sender: this.id,
-//     recipient: params.recipient,
-//     data: params.data
-//   });
-// };
 
 Manager.prototype.onclientdisconnected = function(msg) {
   debug('on client disconnected', msg);
@@ -478,7 +552,7 @@ Manager.prototype.getProcess = function(descriptor) {
 Manager.prototype.createProcess = function(descriptor) {
   debug('create process', descriptor);
   var deferred = utils.deferred();
-  var process = new ChildProcess(descriptor);
+  var process = new ChildThread(descriptor);
 
   this.processes.src[process.src] = process;
   this.processes.id[process.id] = process;
@@ -489,123 +563,14 @@ Manager.prototype.createProcess = function(descriptor) {
   process.on('serviceready', function fn(service) {
     if (service.name !== descriptor.name) return;
     debug('serviceready', service);
-    this.off('serviceready', fn);
+    process.off('serviceready', fn);
     deferred.resolve(service);
   });
 
   return deferred.promise;
 };
 
-},{"./child-process":2,"./emitter":4,"./monitor":6,"./utils":8}],6:[function(require,module,exports){
-
-/**
- * Dependencies
- */
-
-var utils = require('./utils');
-
-var debug = 0 ? console.log.bind(console, '[monitor]') : function() {};
-
-var ERRORS = {
-  1: 'Unknown connection type'
-};
-
-function Monitor() {
-  this.id = getThreadId();
-  this.type = env();
-  this.manager = new BroadcastChannel('threadsmanager');
-  this.ports = [];
-  this.connections = {
-    inbound: 0,
-    outbound: 0
-  };
-
-  this._send = utils.message.sender(this.id, this.id, 'thread');
-  debug('initialized', this.type);
-}
-
-Monitor.prototype.listen = function(type, data) {
-  switch (this.type) {
-    case 'sharedworker':
-      addEventListener('connect', e => this.ports.push(e.ports[0]));
-  }
-};
-
-Monitor.prototype.broadcast = function(type, data) {
-  this.send('broadcast', { data: {
-    type: type,
-    data: data
-  }});
-};
-
-Monitor.prototype.inWindow = function() {
-  return this.type === 'window';
-};
-
-Monitor.prototype.send = function(type, options) {
-  switch (this.type) {
-    case 'worker':
-      this._send(self, type, options); break;
-    case 'sharedworker':
-      this.ports.map(port => this._send(port, type, options)); break;
-    case 'window':
-      this._send(window.parent, type, options);
-  }
-
-  // Always this._send to manager
-  this._send(this.manager, type, options);
-};
-
-Monitor.prototype.connection = function(type) {
-  if (!(type in this.connections)) throw Error(ERRORS[1]);
-  this.connections[type]++;
-};
-
-Monitor.prototype.disconnection = function(type) {
-  if (!(type in this.connections)) throw Error(ERRORS[1]);
-  this.connections[type]--;
-};
-
-Monitor.prototype.check = function() {
-  if (this.redundant()) {
-    this.broadcast('processredundant', { pid: this.id });
-  }
-};
-
-Monitor.prototype.redundant = function() {
-  return this.detached();
-};
-
-Monitor.prototype.detached = function() {
-  return !this.connections.inbound;
-};
-
-/**
- * Utils
- */
-
-function getThreadId() {
-  return utils.query(location.search).pid
-    || (typeof window != 'undefined' && window.name)
-    || 'root';
-}
-
-function env(scope) {
-  return {
-    'Window': 'window',
-    'SharedWorkerGlobalScope': 'sharedworker',
-    'DedicatedWorkerGlobalScope': 'worker',
-    'ServiceWorkerGlobalScope': 'serviceworker'
-  }[this.constructor.name] || 'unknown';
-}
-
-/**
- * Exports
- */
-
-module.exports = new Monitor();
-
-},{"./utils":8}],7:[function(require,module,exports){
+},{"./child-thread":2,"./emitter":4,"./utils":8}],6:[function(require,module,exports){
 
 'use strict';
 
@@ -613,8 +578,8 @@ module.exports = new Monitor();
  * Dependencies
  */
 
+var thread = require('./thread-global');
 var Emitter = require('./emitter');
-var thread = require('./monitor');
 var utils = require('./utils');
 
 /**
@@ -647,7 +612,8 @@ const ERRORS = {
   1: 'method not defined in the contract',
   2: 'arguments.length doesn\'t match contract',
   3: 'unknown request type',
-  4: 'method doesn\'t exist'
+  4: 'method doesn\'t exist',
+  5: 'arguments types don\'t match contract'
 };
 
 /**
@@ -656,20 +622,34 @@ const ERRORS = {
 
 Service.prototype = Object.create(Emitter.prototype);
 
-function Service(name, methods) {
+function Service(name, methods, contract) {
   if (!(this instanceof Service)) return new Service(name, methods);
-  debug('initialize', name, methods);
-  this.id = utils.uuid();
+
+  // Accept single object argument
+  if (typeof name === 'object') {
+    name = name.name;
+    methods = name.methods;
+    contract = name.contract;
+  }
+
+  debug('initialize', name, methods, contract);
+
   this.name = name;
   this.methods = methods;
-
+  this.contract = contract;
+  this.id = utils.uuid();
   this.channels = {};
-  this.manager = manager;
-  this.send = utils.message.sender(thread.id, this.id, 'service');
-  this.onmessage = utils.message.handler(this.id, MESSAGE_TYPES).bind(this);
-  this.manager.addEventListener('message', this.onmessage);
-  this.ready();
 
+  // Create a message factory that outputs
+  // messages in a standardized format.
+  this.Message = utils.message.factory(this.id);
+
+  // Create a message handler that only listens
+  // to meesages intended for this recipient
+  this.onmessage = utils.message.handler(this.id, MESSAGE_TYPES).bind(this);
+
+  this.listen();
+  this.ready();
   debug('initialized');
 }
 
@@ -681,14 +661,17 @@ function Service(name, methods) {
  */
 Service.prototype.onrequest = function(request) {
   debug('on request', request);
+  var type = request.type;
+  var data = request.data;
   var self = this;
 
   // Check to insure this is a known request type
-  if (!~REQUEST_TYPES.indexOf(request.type)) return reject(ERRORS[3]);
+  if (!~REQUEST_TYPES.indexOf(type)) return reject(ERRORS[3]);
 
   // Call the handler and make
   // sure return value is a promise
-  Promise.resolve(this['on' + request.type](request.data))
+  Promise.resolve()
+    .then(() => this['on' + type](data))
     .then(resolve, reject);
 
   function resolve(value) {
@@ -698,10 +681,11 @@ Service.prototype.onrequest = function(request) {
     });
   }
 
-  function reject(reason) {
+  function reject(err) {
+    debug('reject', err);
     self.respond(request, {
       state: 'rejected',
-      reason: reason
+      reason: err.message || err
     });
   }
 };
@@ -710,46 +694,63 @@ Service.prototype.onmethod = function(method) {
   debug('method', method);
   var fn = this.methods[method.name];
   if (!fn) throw new Error(ERRORS[4]);
+  this.checkMethodCall(method);
   return fn.apply(this, method.args);
 };
 
 Service.prototype.respond = function(request, result) {
   debug('respond', request.client, result);
   var channel = this.channels[request.client];
-  this.send(channel, 'response', {
+  channel.postMessage(new this.Message('response', {
     recipient: request.client,
     data: {
       request: request,
       result: result
     }
-  });
+  }));
 };
 
+/**
+ * Once the service is 'ready', we
+ * postMessage out of the global
+ * thread scope so that the parent
+ * of the thread ('manager' or manual)
+ * knows that they can proceed with
+ * the connection request.
+ *
+ * @private
+ */
 Service.prototype.ready = function() {
   debug('ready');
   thread.broadcast('serviceready', {
-    name: this.name,
-    id: this.id
+    id: this.id,
+    name: this.name
   });
 };
 
-Service.prototype.onconnect = function(client) {
-  debug('on connect', client);
+Service.prototype.onconnect = function(data) {
+  debug('on connect', data);
+  var client = data.client;
+  var contract = data.contract;
+
   if (!client) return;
   if (this.channels[client]) return;
+
   var channel = new BroadcastChannel(client);
   channel.onmessage = this.onmessage;
   this.channels[client] = channel;
-  thread.connection('inbound');
 
-  this.send(channel, 'connected', {
+  this.setContract(contract);
+
+  channel.postMessage(new this.Message('connected', {
     recipient: client,
     data: {
       id: this.id,
       name: this.name
     }
-  });
+  }));
 
+  thread.connection('inbound');
   debug('connected', client);
 };
 
@@ -775,32 +776,195 @@ Service.prototype.ondisconnected = function(client) {
   delete this.channels[client];
 };
 
-// Service.prototype.send = function(channel, type, params) {
-//   debug('send', channel.name, params);
-//   channel.postMessage({
-//     id: utils.uuid(),
-//     type: type,
-//     sender: this.id,
-//     recipient: params.recipient,
-//     data: params.data
-//   });
-// };
+Service.prototype.setContract = function(contract) {
+  debug('set contract', contract);
+  this.contract = contract;
+};
 
-Service.prototype.broadcast = function(name, data) {
-  debug('broadcast', name, data);
-  for (var channel in this.channels) {
-    this.send(channel, 'broadcast', {
-      recipient: channel.name, // hacky
+Service.prototype.checkMethodCall = function(method) {
+  debug('check method call', method);
+
+  var name = method.name;
+  var args = method.args;
+
+  if (!this.contract) return;
+
+  var signature = this.contract.methods[name];
+  var e;
+
+  if (!signature) e = ERRORS[1];
+  else if (args.length !== signature.length) e = ERRORS[2];
+  else if (!utils.typesMatch(args, signature)) e = ERRORS[5];
+
+  if (e) throw new Error(e);
+};
+
+/**
+ * Listens for incoming messsages from
+ * the `thread` global and `manager` channel.
+ *
+ * `this.onmessage` filters out messages
+ * that aren't intended for this instance.
+ *
+ * @private
+ */
+Service.prototype.listen = function() {
+  manager.addEventListener('message', this.onmessage);
+  thread.on('message', this.onmessage);
+};
+
+Service.prototype.broadcast = function(type, data) {
+  debug('broadcast', type, data);
+  for (var client in this.channels) {
+    this.channels[client].postMessage(new this.Message('broadcast', {
+      recipient: client,
       data: {
-        name: name,
+        type: type,
         data: data
       }
-    });
+    }));
   }
 };
 
-},{"./emitter":4,"./monitor":6,"./utils":8}],8:[function(require,module,exports){
+},{"./emitter":4,"./thread-global":7,"./utils":8}],7:[function(require,module,exports){
 
+/**
+ * Dependencies
+ */
+
+var emitter = require('./emitter');
+var utils = require('./utils');
+
+/**
+ * Locals
+ */
+
+var debug = 1 ? console.log.bind(console, '[ThreadGlobal]') : function() {};
+
+const ERRORS = {
+  1: 'Unknown connection type'
+};
+
+/**
+ * Extend `Emitter`
+ */
+
+ThreadGlobal.prototype = Object.create(emitter.prototype);
+
+function ThreadGlobal() {
+  this.id = getThreadId();
+  this.type = utils.env();
+  this.manager = new BroadcastChannel('threadsmanager');
+  this.ports = [];
+  this.connections = {
+    inbound: 0,
+    outbound: 0
+  };
+
+  this.Message = utils.message.factory(this.id, this.id);
+  this.onmessage = this.onmessage.bind(this);
+  this.listen();
+  debug('initialized', this.type);
+}
+
+ThreadGlobal.prototype.listen = function() {
+  debug('listen');
+  switch (this.type) {
+    case 'sharedworker':
+      addEventListener('connect', e => {
+        var port = e.ports[0];
+        this.ports.push(port);
+        port.onmessage = this.onmessage;
+        port.start();
+      });
+    break;
+    case 'worker':
+    case 'window':
+      addEventListener('message', this.onmessage);
+  }
+};
+
+ThreadGlobal.prototype.onmessage = function(e) {
+  debug('on message', e);
+  this.emit('message', e);
+};
+
+ThreadGlobal.prototype.broadcast = function(type, data) {
+  this.postMessage(new this.Message('broadcast', {
+    recipient: this.id,
+    data: {
+      type: type,
+      data: data
+    }
+  }));
+};
+
+/**
+ * Message the thread parent
+ * (instanceof ChildThread) to
+ * inform them of something that
+ * has happened inside the thread.
+ *
+ * The Manager could have created
+ * the `ChildThread` or it could
+ * have been created manually by
+ * the user.
+ *
+ * @param  {Message} message
+ * @public
+ */
+ThreadGlobal.prototype.postMessage = function(message) {
+  switch (this.type) {
+    case 'worker':
+      postMessage(message); break;
+    case 'sharedworker':
+      this.ports.map(port => port.postMessage(message)); break;
+    case 'window':
+      window.parent.postMessage(message, '*'); break;
+  }
+};
+
+ThreadGlobal.prototype.connection = function(type) {
+  if (!(type in this.connections)) throw Error(ERRORS[1]);
+  this.connections[type]++;
+};
+
+ThreadGlobal.prototype.disconnection = function(type) {
+  if (!(type in this.connections)) throw Error(ERRORS[1]);
+  this.connections[type]--;
+};
+
+ThreadGlobal.prototype.check = function() {
+  if (this.redundant()) {
+    this.broadcast('processredundant', { pid: this.id });
+  }
+};
+
+ThreadGlobal.prototype.redundant = function() {
+  return this.detached();
+};
+
+ThreadGlobal.prototype.detached = function() {
+  return !this.connections.inbound;
+};
+
+/**
+ * Utils
+ */
+
+function getThreadId() {
+  return utils.query(location.search).pid
+    || (typeof window != 'undefined' && window.name)
+    || 'root';
+}
+
+/**
+ * Exports
+ */
+
+module.exports = new ThreadGlobal();
+
+},{"./emitter":4,"./utils":8}],8:[function(require,module,exports){
 'use strict';
 
 /**
@@ -808,7 +972,7 @@ Service.prototype.broadcast = function(name, data) {
  * @type {Function}
  */
 
-var debug = 1 ? console.log.bind(console, '[utils]') : function() {};
+var debug = 0 ? console.log.bind(console, '[utils]') : function() {};
 
 exports.uuid = function (){
   var timestamp = Date.now();
@@ -853,6 +1017,15 @@ exports.query = function(string) {
   return result;
 };
 
+exports.env = function() {
+  return {
+    'Window': 'window',
+    'SharedWorkerGlobalScope': 'sharedworker',
+    'DedicatedWorkerGlobalScope': 'worker',
+    'ServiceWorkerGlobalScope': 'serviceworker'
+  }[self.constructor.name] || 'unknown';
+};
+
 exports.message = {
   sender: function(pid, sender, name) {
     return function(channel, type, options) {
@@ -866,6 +1039,19 @@ exports.message = {
         recipient: options.recipient || '*',
         data: options.data
       });
+    };
+  },
+
+  factory: function(sender) {
+    return function Message(type, options) {
+      options = options || {};
+      return {
+        type: type,
+        id: exports.uuid(),
+        sender: sender,
+        recipient: options.recipient || '*',
+        data: options.data
+      };
     };
   },
 

@@ -1,0 +1,8 @@
+{
+  "globals": {
+    "define": false,
+    "BroadcastChannel": false,
+    "suite": false,
+    "test": false
+  }
+}
