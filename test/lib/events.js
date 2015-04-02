@@ -5,7 +5,7 @@ importScripts('../../threads.js');
 
 try {
 
-  threads.service('test-event', {
+  threads.service('test-events', {
     testBroadcast: function(type, data) {
       this.broadcast(type, data);
     }

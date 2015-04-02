@@ -14,10 +14,6 @@ suite('client', function() {
     this.dom.remove();
   });
 
-  suite('contracts', function() {
-
-  });
-
   suite('disconnect', function() {
 
   });

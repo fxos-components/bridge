@@ -37,7 +37,8 @@ var debug = 1 ? console.log.bind(console, '[ChildThread]') : function() {};
  */
 
 const ERRORS = {
-  1: 'iframes can\'t be spawned from workers'
+  1: 'iframes can\'t be spawned from workers',
+  2: 'requst to get service timed out'
 };
 
 const KNOWN_MESSAGES = [
@@ -56,15 +57,16 @@ function ChildThread(params) {
   this.src = params.src;
   this.type = params.type;
   this.parentNode = params.parentNode;
-  this.servicesReady = {};
+  this.services = {};
   this.onmessage = utils.message.handler(this.id, KNOWN_MESSAGES).bind(this);
   this.on('serviceready', this.onserviceready.bind(this));
   this.process = this.createProcess();
   this.listen();
-  debug('initialized');
+  debug('initialized', this.type);
 }
 
 ChildThread.prototype.createProcess = function() {
+  debug('create process');
   switch(this.type) {
     case 'worker':
       return new Worker(this.src + '?pid=' + this.id);
@@ -80,8 +82,26 @@ ChildThread.prototype.createProcess = function() {
   }
 };
 
-ChildThread.prototype.isReady = function(service) {
-  return !!this.servicesReady[service];
+ChildThread.prototype.getService = function(name, options) {
+  debug('get service', name, options);
+
+  var wait = (options && options.wait) || 4000;
+  var service = this.services[name];
+  if (service) return Promise.resolve(service);
+
+  var deferred = utils.deferred();
+  this.on('serviceready', function fn(service) {
+    debug('serviceready', service.name );
+    if (service.name !== name) return;
+    this.off('serviceready', fn);
+    clearTimeout(timeout);
+    deferred.resolve(service);
+  });
+
+  // Request will timeout when no service of
+  // this name becomes ready within the given wait
+  var timeout = setTimeout(() => deferred.reject(new Error(ERRORS[2])), wait);
+  return deferred.promise;
 };
 
 ChildThread.prototype.postMessage = function(message) {
@@ -93,6 +113,7 @@ ChildThread.prototype.postMessage = function(message) {
 };
 
 ChildThread.prototype.listen = function() {
+  debug('listen (%s)', this.type);
   switch(this.type) {
     case 'worker':
       this.process.addEventListener('message', this.onmessage);
@@ -127,7 +148,7 @@ ChildThread.prototype.onbroadcast = function(broadcast) {
 
 ChildThread.prototype.onserviceready = function(service) {
   debug('on service ready', service);
-  this.servicesReady[service.name] = service;
+  this.services[service.name] = service;
 };
 
 ChildThread.prototype.destroy = function() {
@@ -225,33 +246,28 @@ Client.prototype.connect = function() {
   this.service.channel = new BroadcastChannel(this.id);
   this.service.channel.onmessage = this.onmessage;
 
+  // If the client has a handle on the
+  // thread we can connect to it directly,
+  // else we go through the manager proxy.
   if (this.thread) this.connectViaThread();
   else this.connectViaManager();
 };
 
 Client.prototype.connectViaThread = function() {
   debug('connect via thread');
-  var self = this;
+  this.thread.getService(this.service.name).then(service => {
+    debug('got service', service);
 
-  // Check that the service we're looking
-  // for is ready on the target thread.
-  if (!this.thread.isReady(this.service.name)) {
-    this.thread.on('serviceready', function fn(service) {
-      debug('service ready', service);
-      if (service.name !== self.service.name) return;
-      self.thread.off('serviceready', fn);
-      self.service.id = service.id;
-      self.connectViaThread();
-    });
-  }
-
-  this.thread.postMessage(new this.Message('connect', {
-    recipient: this.service.id,
-    data: {
-      client: this.id,
-      contract: this.contract
-    }
-  }));
+    // Post a 'connect' request directly
+    // to the thread bypassing the manager
+    this.thread.postMessage(new this.Message('connect', {
+      recipient: this.service.id,
+      data: {
+        client: this.id,
+        contract: this.contract
+      }
+    }));
+  });
 };
 
 Client.prototype.connectViaManager = function() {
@@ -516,10 +532,16 @@ Manager.prototype.messageRead = function(id) {
 Manager.prototype.onconnect = function(data) {
   debug('on connect', data);
   var descriptor = this.registry[data.service];
+
   if (!descriptor) return debug('"%s" not managed here', data.service);
-  this.getProcess(descriptor).then(service => {
-    this.connect(service.id, data.client, descriptor.contract);
-  });
+
+  var contract = descriptor.contract;
+  var client = data.client;
+
+  this.getThread(descriptor)
+    .getService(descriptor.name)
+    .then(service => this.connect(service.id, client, contract))
+    .catch(e => { throw new Error(e); });
 };
 
 Manager.prototype.connect = function(service, client, contract) {
@@ -541,33 +563,18 @@ Manager.prototype.onclientconnected = function(msg) {
   debug('on client connected', msg);
 };
 
-Manager.prototype.getProcess = function(descriptor) {
-  debug('get process', descriptor);
-  var process = this.processes[descriptor.src];
-  return process
-    ? Promise.resolve(process)
-    : this.createProcess(descriptor);
+Manager.prototype.getThread = function(descriptor) {
+  debug('get process', descriptor, this.processes);
+  var process = this.processes.src[descriptor.src];
+  return process || this.createThread(descriptor);
 };
 
-Manager.prototype.createProcess = function(descriptor) {
+Manager.prototype.createThread = function(descriptor) {
   debug('create process', descriptor);
-  var deferred = utils.deferred();
   var process = new ChildThread(descriptor);
-
   this.processes.src[process.src] = process;
   this.processes.id[process.id] = process;
-
-  // Wait for a new service to declare itself
-  // 'ready' that matches the pid and service
-  // name of the child-process we just created.
-  process.on('serviceready', function fn(service) {
-    if (service.name !== descriptor.name) return;
-    debug('serviceready', service);
-    process.off('serviceready', fn);
-    deferred.resolve(service);
-  });
-
-  return deferred.promise;
+  return process;
 };
 
 },{"./child-thread":2,"./emitter":4,"./utils":8}],6:[function(require,module,exports){
@@ -649,7 +656,15 @@ function Service(name, methods, contract) {
   this.onmessage = utils.message.handler(this.id, MESSAGE_TYPES).bind(this);
 
   this.listen();
-  this.ready();
+
+  // Don't declare service ready until
+  // any pending tasks in the event-loop
+  // have completed. Namely any pending
+  // 'connect' events for `SharedWorkers`.
+  // If we broadcast the 'serviceready'
+  // event before the thread-parent has
+  // 'connected', it won't be heard.
+  setTimeout(() => this.ready());
   debug('initialized');
 }
 
@@ -872,6 +887,7 @@ ThreadGlobal.prototype.listen = function() {
   switch (this.type) {
     case 'sharedworker':
       addEventListener('connect', e => {
+        debug('port connect');
         var port = e.ports[0];
         this.ports.push(port);
         port.onmessage = this.onmessage;
@@ -914,6 +930,7 @@ ThreadGlobal.prototype.broadcast = function(type, data) {
  * @public
  */
 ThreadGlobal.prototype.postMessage = function(message) {
+  debug('postMessage (%s)', this.type, message);
   switch (this.type) {
     case 'worker':
       postMessage(message); break;
