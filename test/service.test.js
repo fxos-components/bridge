@@ -1,8 +1,8 @@
 /*global threads,assert,suite,setup,teardown,test*/
 /*jshint esnext:true, maxlen:false*/
 
-suite('Service', function() {
-  suite('client provided contracts', function() {
+suite('Service /', function() {
+  suite('client provided contracts /', function() {
     setup(function() {
       this.thread = threads.create({
         src: '/base/test/lib/contracts.js',

@@ -2,6 +2,7 @@
 /*jshint esnext:true, maxlen:false*/
 
 suite('client', function() {
+  var thread;
 
   setup(function() {
     this.sinon = sinon.sandbox.create();
@@ -12,19 +13,35 @@ suite('client', function() {
   teardown(function() {
     this.sinon.restore();
     this.dom.remove();
+
+    if (thread) thread.destroy();
   });
 
-  suite('disconnect', function() {
+  suite('disconnect', function(done) {
+    test('threads emit a `redundant` event when they no longer have any clients', function(done) {
+      thread = threads.create({
+        src: '/base/test/lib/events.js',
+        type: 'worker'
+      });
 
+      var client1 = threads.client('test-events', { thread: thread });
+      var client2 = threads.client('test-events', { thread: thread });
+
+      Promise.all([
+        client1.connect(),
+        client2.connect()
+      ]).then(() => {
+        client1.disconnect();
+        client2.disconnect();
+
+        thread.on('redundant', () => {
+          done();
+        });
+      });
+    });
   });
 
   suite('events', function() {
-    var thread;
-
-    teardown(function() {
-      thread.destroy();
-    });
-
     test('It accepts threads that aren\'t created by the manager', function(done) {
       thread = threads.create({
         src: '/base/test/lib/events.js',
@@ -43,12 +60,6 @@ suite('client', function() {
   });
 
   suite('dynamic threads', function() {
-    var thread;
-
-    teardown(function() {
-      thread.destroy();
-    });
-
     test('It accepts threads that aren\'t created by the manager', function(done) {
       thread = threads.create({
         src: '/base/test/lib/view.html',
