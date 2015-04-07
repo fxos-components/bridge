@@ -4,9 +4,9 @@ Exposes services from one 'thread' to another.
 
 A 'thread' could be an instance of:
 
-- Window
-- Worker
-- SharedWorker
+- `Window` (inc. iframe)
+- `Worker`
+- `SharedWorker`
 
 ### Service
 
@@ -93,3 +93,19 @@ threads.manager({
   }
 });
 ```
+
+### Bypassing the Manager
+
+
+
+### Memory management
+
+Threads keep track of how many inbound clients are connected to them. When the last client disconnects they will broadcast a `'redundant'` event. Whatever spawned the thread (usually the Manager) can then destroy it to free up memory.
+
+To manage memory in you apps you can `.disconnect()` clients when the app is in the background and re`.connect() when they come back to the foreground.
+
+### Open questions
+
+- How should versioning of Services work?
+- When `type: 'window'` should we do the job of loading this in a `.html` document, or is it best to leave this to the user.
+- Workers use `importScripts()` and window `<script>`, what is a sensible format that would allow authoring script that will run in either environment type?
