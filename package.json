@@ -1,9 +1,9 @@
 {
-  "name": "runtime-bridge",
+  "name": "threads",
   "version": "0.1.1",
-  "homepage": "https://github.com/gaia-components/runtime-bridge",
+  "homepage": "https://github.com/gaia-components/threads",
   "license": "MIT",
-  "main": "runtime-bridge.js",
+  "main": "threads.js",
   "devDependencies": {
     "browserify": "^9.0.3",
     "karma": "0.12.30",
@@ -26,9 +26,9 @@
 
   "repository": {
     "type": "git",
-    "url": "git://github.com/gaia-components/runtime-bridge.git"
+    "url": "git://github.com/gaia-components/threads.git"
   },
   "bugs": {
-    "url": "https://github.com/gaia-components/runtime-bridge/issues"
+    "url": "https://github.com/gaia-components/threads/issues"
   }
 }
