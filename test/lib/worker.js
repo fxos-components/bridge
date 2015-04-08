@@ -13,13 +13,13 @@ var database = {
   3: { id: 3, firstname: 'ben' }
 };
 
-function getContact(id) {
+server.handle('getContact', function(id) {
   return new Promise((resolve, reject) => {
     var record = database[id];
     if (!record) return reject(new Error('no contact found'));
     setTimeout(() => { resolve(record); }, 100);
   });
-}
+});
 
 function testBroadcast(name) {
   server.broadcast(name, database[3]);
