@@ -103,4 +103,22 @@ suite('client', function() {
       });
     });
   });
+
+  suite('Connecting to already running services', function() {
+    test('it connects without a thread reference', function(done) {
+      thread = threads.create({
+        src: '/base/test/lib/thread2.js',
+        type: 'worker'
+      });
+
+      thread.on('serviceready', service => {
+        var client = threads.client('thread2-service');
+
+        client.call('getData').then(data => {
+          assert.deepEqual(data, { some: 'data' });
+          done();
+        });
+      });
+    });
+  });
 });

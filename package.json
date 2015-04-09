@@ -15,7 +15,7 @@
   },
   "scripts": {
     "test": "./node_modules/karma/bin/karma start test/karma.conf.js --single-run",
-    "test-dev": "./node_modules/karma/bin/karma start test/karma.conf.js --log-level=debug",
+    "test-dev": "./node_modules/karma/bin/karma start test/karma.conf.js",
     "build": "browserify index.js -s threads -o threads.js",
     "watch": "npm-watch"
   },

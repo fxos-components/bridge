@@ -154,6 +154,7 @@ ChildThread.prototype.destroy = function() {
 };
 
 ChildThread.prototype.destroyProcess = function() {
+  debug('destroy thread (%s)');
   switch(this.type) {
     case 'worker': this.process.terminate(); break;
     case 'sharedworker': this.process.port.close(); break;
@@ -261,21 +262,34 @@ Client.prototype.connectViaThread = function() {
       recipient: service.id,
       data: {
         client: this.id,
+        service: service.name,
         contract: this.contract
       }
     }));
   });
 };
 
+/**
+ * Broadcasts a 'connect' message on the
+ * manager channel to indicate that a
+ * client wants to connect with a
+ * particular service.
+ *
+ * This message will either be handled
+ * by a manager that handles this service
+ * name, or a prexisting service of this name.
+ *
+ * NOTE: Potentially if the is more than
+ * one service of the same name running
+ * the client could end up connecting
+ * to the wrong service.
+ *
+ * @private
+ */
 Client.prototype.connectViaManager = function() {
   debug('connect via manager');
-
-  // Send a message to the threads
-  // manager to indicate that this
-  // process wants to connect with
-  // a particular service.
   manager.postMessage(this.messages.create('connect', {
-    recipient: 'threadsmanager',
+    recipient: '*',
     data: {
       service: this.service.name,
       client: this.id
@@ -513,16 +527,17 @@ ManagerInternal.prototype.onconnect = function(data) {
 
   this.getThread(descriptor)
     .getService(descriptor.name)
-    .then(service => this.connect(service.id, client, contract))
+    .then(service => this.connect(service, client, contract))
     .catch(e => { throw new Error(e); });
 };
 
 ManagerInternal.prototype.connect = function(service, client, contract) {
   debug('connect', service, client, contract);
   channel.postMessage(this.messages.create('connect', {
-    recipient: service,
+    recipient: service.id,
     data: {
       client: client,
+      service: service.name,
       contract: contract
     }
   }));
@@ -727,8 +742,10 @@ ServiceInternal.prototype.onconnect = function(data) {
   debug('on connect', data);
   var client = data.client;
   var contract = data.contract;
+  var service = data.service;
 
   if (!client) return;
+  if (service !== this.name) return;
   if (this.channels[client]) return;
 
   var channel = new BroadcastChannel(client);
@@ -835,7 +852,7 @@ var utils = require('./utils');
  * Locals
  */
 
-var debug = 1 ? console.log.bind(console, '[ThreadGlobal]') : function() {};
+var debug = 0 ? console.log.bind(console, '[ThreadGlobal]') : function() {};
 
 const ERRORS = {
   1: 'Unknown connection type'
