@@ -97,7 +97,9 @@ ChildThread.prototype.getService = function(name, options) {
 
   // Request will timeout when no service of
   // this name becomes ready within the given wait
-  var timeout = setTimeout(() => deferred.reject(new Error(ERRORS[2])), wait);
+  var timeout = setTimeout(function() {
+    deferred.reject(new Error(ERRORS[2]));
+  }, wait);
   return deferred.promise;
 };
 
@@ -253,7 +255,7 @@ Client.prototype.connect = function() {
 
 Client.prototype.connectViaThread = function() {
   debug('connect via thread');
-  this.thread.getService(this.service.name).then(service => {
+  this.thread.getService(this.service.name).then(function(service) {
     debug('got service', service);
 
     // Post a 'connect' request directly
@@ -266,7 +268,7 @@ Client.prototype.connectViaThread = function() {
         contract: this.contract
       }
     }));
-  });
+  }.bind(this));
 };
 
 /**
@@ -313,7 +315,7 @@ Client.prototype.onconnected = function(service) {
 Client.prototype.disconnect = function() {
   debug('disconnect');
   return this.request('disconnect', this.id)
-    .then(r => this.ondisconnected(r));
+    .then(function(r) { return this.ondisconnected(r); }.bind(this));
 };
 
 Client.prototype.request = function(type, data) {
@@ -528,8 +530,10 @@ ManagerInternal.prototype.onconnect = function(data) {
 
   this.getThread(descriptor)
     .getService(descriptor.name)
-    .then(service => this.connect(service, client, contract))
-    .catch(e => { throw new Error(e); });
+    .then(function(service) {
+      return this.connect(service.id, client, contract);
+    }.bind(this))
+    .catch(function(e) { throw new Error(e); });
 };
 
 ManagerInternal.prototype.connect = function(service, client, contract) {
@@ -660,7 +664,7 @@ function ServiceInternal(external, name, methods, contract) {
   // If we broadcast the 'serviceready'
   // event before the thread-parent has
   // 'connected', it won't be heard.
-  setTimeout(() => this.ready());
+  setTimeout(function() { this.ready(); }.bind(this));
   debug('initialized');
 }
 
@@ -682,7 +686,7 @@ ServiceInternal.prototype.onrequest = function(request) {
   // Call the handler and make
   // sure return value is a promise
   Promise.resolve()
-    .then(() => this['on' + type](data))
+    .then(function() { return this['on' + type](data); }.bind(this))
     .then(resolve, reject);
 
   function resolve(value) {
@@ -886,13 +890,13 @@ ThreadGlobal.prototype.listen = function() {
   debug('listen');
   switch (this.type) {
     case 'sharedworker':
-      addEventListener('connect', e => {
+      addEventListener('connect', function(e) {
         debug('port connect');
         var port = e.ports[0];
         this.ports.push(port);
         port.onmessage = this.onmessage;
         port.start();
-      });
+      }.bind(this));
     break;
     case 'worker':
     case 'window':
@@ -935,7 +939,8 @@ ThreadGlobal.prototype.postMessage = function(message) {
     case 'worker':
       postMessage(message); break;
     case 'sharedworker':
-      this.ports.map(port => port.postMessage(message)); break;
+      this.ports.map(function(port) { return port.postMessage(message); });
+      break;
     case 'window':
       window.parent.postMessage(message, '*'); break;
   }
@@ -1035,7 +1040,7 @@ exports.query = function(string) {
   string
     .replace('?', '')
     .split('&')
-    .forEach(param => {
+    .forEach(function(param) {
       var parts = param.split('=');
       result[parts[0]] = parts[1];
     });
