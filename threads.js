@@ -444,6 +444,7 @@ Emitter.prototype = {
   off: function(type, callback) {
     if (!this._callbacks) return;
     var typeListeners = this._callbacks[type];
+    if (!typeListeners) return;
     var i = typeListeners.indexOf(callback);
     if (~i) typeListeners.splice(i, 1);
   }
