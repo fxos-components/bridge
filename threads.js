@@ -29,7 +29,7 @@ module.exports = ChildThread;
  * @type {Function}
  */
 
-var debug = 1 ? console.log.bind(console, '[ChildThread]') : function() {};
+var debug = 0 ? console.log.bind(console, '[ChildThread]') : function() {};
 
 /**
  * Error messages
@@ -190,7 +190,7 @@ var manager = new BroadcastChannel('threadsmanager');
  * Simple logger
  * @type {Function}
  */
-var debug = 1 ? console.log.bind(console, '[client]') : function() {};
+var debug = 0 ? console.log.bind(console, '[client]') : function() {};
 
 /**
  * Extend `Emitter`
@@ -470,7 +470,7 @@ module.exports = Manager;
  * Locals
  */
 
-var debug = 1 ? console.log.bind(console, '[Manager]') : function() {};
+var debug = 0 ? console.log.bind(console, '[Manager]') : function() {};
 var channel = new BroadcastChannel('threadsmanager');
 
 function Manager(descriptors) {
@@ -586,7 +586,7 @@ module.exports = Service;
  * Mini Logger
  * @type {Function}
  */
-var debug = 1 ? console.log.bind(console, '[service]') : function(){};
+var debug = 0 ? console.log.bind(console, '[service]') : function(){};
 
 /**
  * Global broadcast channel that
