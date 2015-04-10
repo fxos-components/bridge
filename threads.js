@@ -531,7 +531,7 @@ ManagerInternal.prototype.onconnect = function(data) {
   this.getThread(descriptor)
     .getService(descriptor.name)
     .then(function(service) {
-      return this.connect(service.id, client, contract);
+      return this.connect(service, client, contract);
     }.bind(this))
     .catch(function(e) { throw new Error(e); });
 };
