@@ -113,7 +113,7 @@ threads.service('my-service@v0.1.0', ...);
 ```
 
 ```js
-threads.client(''my-service@v0.1.0'');
+threads.client('my-service@v0.1.0');
 ```
 
 ### Open questions
