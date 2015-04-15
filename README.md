@@ -104,8 +104,22 @@ Threads keep track of how many inbound clients are connected to them. When the l
 
 To manage memory in you apps you can `.disconnect()` clients when the app is in the background and re`.connect() when they come back to the foreground.
 
+### Versioning services
+
+Right now the best way to version a service is include a version in the service name.
+
+```js
+threads.service('my-service@v0.1.0', ...);
+```
+
+```js
+threads.client(''my-service@v0.1.0'');
+```
+
 ### Open questions
 
-- How should versioning of Services work?
 - When `type: 'window'` should we do the job of loading this in a `.html` document, or is it best to leave this to the user.
+
 - Workers use `importScripts()` and window `<script>`, what is a sensible format that would allow authoring script that will run in either environment type?
+
+- With `BroadcastChannel` it's possible for a `Worker` to have a client from another browser 'tab'. This is dangerous as if 'tab1' is closed, any clients in 'tab2' that depend on services in 'tab1' will be disconnected. This could be fixed by ensuring only `SharedWorkers` can used for cross-tab services and that each tab's manager calls `new SharedWorker(...)`.
