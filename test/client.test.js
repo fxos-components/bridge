@@ -55,7 +55,7 @@ suite('client', function() {
         done();
       });
 
-      client.call('testBroadcast', 'test-event', { event: 'data' });
+      client.method('testBroadcast', 'test-event', { event: 'data' });
     });
   });
 
@@ -69,7 +69,7 @@ suite('client', function() {
 
       var client = threads.client('little-browser', { thread: thread });
 
-      client.call('getTitle').then(title => {
+      client.method('getTitle').then(title => {
         assert.equal(title, 'page-title');
         done();
       });
@@ -83,7 +83,7 @@ suite('client', function() {
 
       var client = threads.client('view-server', { thread: thread });
 
-      client.call('getData').then(data => {
+      client.method('getData').then(data => {
         assert.deepEqual(data, { some: 'data' });
         done();
       });
@@ -97,7 +97,7 @@ suite('client', function() {
 
       var client = threads.client('view-server', { thread: thread });
 
-      client.call('getData').then(data => {
+      client.method('getData').then(data => {
         assert.deepEqual(data, { some: 'data' });
         done();
       });
@@ -114,7 +114,7 @@ suite('client', function() {
       thread.on('serviceready', service => {
         var client = threads.client('thread2-service');
 
-        client.call('getData').then(data => {
+        client.method('getData').then(data => {
           assert.deepEqual(data, { some: 'data' });
           done();
         });

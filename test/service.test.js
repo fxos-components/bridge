@@ -35,13 +35,13 @@ suite('Service /', function() {
     });
 
     test('contract method calls are allowed', function(done) {
-      this.client.call('contractMethod', 'foo').then(result => {
+      this.client.method('contractMethod', 'foo').then(result => {
         assert.equal(result, 'conformance: foo');
       }).then(done, done);
     });
 
     test('uncontracted method calls throw', function(done) {
-      this.client.call('uncontractMethod').then(result => {
+      this.client.method('uncontractMethod').then(result => {
         assert.equal(result, 'rebellion');
         done('should not be called');
       }).catch(err => {
@@ -51,7 +51,7 @@ suite('Service /', function() {
     });
 
     test('calling with incorrect argument type throws', function(done) {
-      this.client.call('contractMethod', {}).then(result => {
+      this.client.method('contractMethod', {}).then(result => {
         assert.equal(result, 'rebellion');
         done('should not be called');
       }).catch(err => {
@@ -61,7 +61,7 @@ suite('Service /', function() {
     });
 
     test('calling with incorrect arguments.length throws', function(done) {
-      this.client.call('contractMethod', '1', '2', '3').then(result => {
+      this.client.method('contractMethod', '1', '2', '3').then(result => {
         assert.equal(result, 'rebellion');
         done('should not be called');
       }).catch(err => {
@@ -84,13 +84,13 @@ suite('Service /', function() {
     });
 
     test('contract method calls are allowed', function(done) {
-      this.client.call('contractMethod', 'foo').then(result => {
+      this.client.method('contractMethod', 'foo').then(result => {
         assert.equal(result, 'conformance: foo');
       }).then(done, done);
     });
 
     test('uncontracted method calls throw', function(done) {
-      this.client.call('uncontractMethod').then(result => {
+      this.client.method('uncontractMethod').then(result => {
         assert.equal(result, 'rebellion');
         done('should not be called');
       }).catch(err => {

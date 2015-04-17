@@ -26,7 +26,7 @@ suite('Manager', function() {
 
   test('simple call', function(done) {
     client = threads.client('view-server');
-    client.call('getData').then(data => {
+    client.method('getData').then(data => {
       assert.deepEqual(data, { some: 'data' });
       done();
     });
@@ -54,8 +54,8 @@ suite('Manager', function() {
       client2 = threads.client('view-server');
 
       Promise.all([
-        client1.call('getData'),
-        client2.call('getData')
+        client1.method('getData'),
+        client2.method('getData')
       ]).then(results => {
         assert.deepEqual(results[0], { some: 'data' });
         assert.deepEqual(results[1], { some: 'data' });

@@ -400,9 +400,9 @@ Client.prototype.ondisconnected = function() {
   thread.disconnection('outbound');
 };
 
-Client.prototype.call = function(method) {
+Client.prototype.method = function(method) {
   var args = [].slice.call(arguments, 1);
-  debug('call', method, args);
+  debug('method', method, args);
   return this.request('method', {
     name: method,
     args: args
