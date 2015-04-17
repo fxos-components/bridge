@@ -4,15 +4,13 @@ importScripts('../../threads.js');
 
 try {
 
-  threads.service('contract-service', {
-    contractMethod: function(string) {
+  threads.service('contract-service')
+    .method('contractMethod', function(string) {
       return 'conformance: ' + string;
-    },
-
-    uncontractMethod: function() {
+    })
+    .method('uncontractMethod', function() {
       return 'rebellion!';
-    }
-  });
+    });
 
   /**
    * An example of a service that
@@ -34,19 +32,14 @@ try {
     }
   };
 
-  threads.service({
-    name: 'service-supplied-contract',
-    contract: contract,
-    methods: {
-      contractMethod: function(string) {
-        return 'conformance: ' + string;
-      },
-
-      uncontractMethod: function() {
-        return 'rebellion!';
-      }
-    }
-  });
+  threads.service('service-supplied-contract')
+    .contract(contract)
+    .method('contractMethod', function(string) {
+      return 'conformance: ' + string;
+    })
+    .method('uncontractMethod', function() {
+      return 'rebellion!';
+    });
 
 } catch(e) {
   console.log(e);

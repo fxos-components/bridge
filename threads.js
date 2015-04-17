@@ -628,28 +628,49 @@ const ERRORS = {
   5: 'arguments types don\'t match contract'
 };
 
-function Service(name, methods, contract) {
-  if (!(this instanceof Service)) return new Service(name, methods, contract);
+function Service(name) {
+  if (!(this instanceof Service)) return new Service(name);
 
-  // Accept a single object argument
-  if (typeof name === 'object') {
-    contract = name.contract;
-    methods = name.methods;
-    name = name.name;
-  }
-
-  var internal = new ServiceInternal(this, name, methods, contract);
-  this.broadcast = internal.broadcast.bind(internal);
+  this._internal = new ServiceInternal(this, name);
 }
 
-function ServiceInternal(external, name, methods, contract) {
-  debug('initialize', name, methods, contract);
+/**
+ * Register a method that will be exposed to all the clients.
+ * @param {String} name Method name
+ * @param {Function} fn Implementation
+ */
+Service.prototype.method = function(name, fn) {
+  this._internal.methods[name] = fn;
+  return this;
+};
+
+/**
+ * Register a contract that will be used to validate method calls and events.
+ * @param {Object} contract Contract object
+ */
+Service.prototype.contract = function(contract) {
+  this._internal.setContract(contract);
+  return this;
+};
+
+/**
+ * Broadcast message to all the clients.
+ * @param {String} type Event name.
+ * @param {*} data Payload to be transmitted.
+ */
+Service.prototype.broadcast = function(type, data) {
+  this._internal.broadcast(type, data);
+  return this;
+};
+
+function ServiceInternal(external, name) {
+  debug('initialize', name);
 
   this.external = external;
   this.id = utils.uuid();
   this.name = name;
-  this.contract = contract;
-  this.methods = methods;
+  this.contract = null;
+  this.methods = {};
   this.channels = {};
 
   // Create a message factory that outputs

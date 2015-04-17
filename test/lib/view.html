@@ -4,11 +4,10 @@
   <title>page-title</title>
   <script src="../../threads.js"></script>
   <script>
-    threads.service('little-browser', {
-      getTitle: function() {
+    threads.service('little-browser')
+      .method('getTitle', function() {
         return document.title;
-      }
-    });
+      });
   </script>
 </head>
 <body>

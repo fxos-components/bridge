@@ -15,17 +15,15 @@ A `Service` is a collection of methods exposed to a `Client`. Methods can be syn
 ```js
 importScripts('threads.js');
 
-threads.service('my-service', {
-  myMethod: function(param) {
+threads.service('my-service')
+  .method('myMethod', function(param) {
     return 'hello: ' + param;
-  },
-
-  myOtherMethod: function() {
+  })
+  .method('myOtherMethod', function() {
     return new Promise(resolve => {
       setTimeout(() => resolve('result'), 1000);
     });
-  }
-});
+  });
 ```
 
 ### Client
@@ -36,7 +34,7 @@ threads.service('my-service', {
 var threads = require('threads');
 var client = threads.client('my-service');
 
-client.call('myMethod', 'world').then(value => {
+client.method('myMethod', 'world').then(value => {
   console.log(value); //=> 'hello: world'
 });
 ```
