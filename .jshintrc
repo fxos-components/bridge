@@ -25,6 +25,7 @@
   "devel": true,
   "nonstandard": true,
   "worker": true,
+  "boss": true,
 
   "-W078": true,
 

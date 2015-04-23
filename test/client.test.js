@@ -42,7 +42,7 @@ suite('client', function() {
   });
 
   suite('events', function() {
-    test('It accepts threads that aren\'t created by the manager', function(done) {
+    test('events dispatched from the service call registered callbacks', function(done) {
       thread = threads.create({
         src: '/base/test/lib/events.js',
         type: 'worker'
@@ -65,6 +65,7 @@ suite('client', function() {
         src: '/base/test/lib/streams.js',
         type: 'worker'
       });
+
       this.client = threads.client('test-streams', { thread: thread });
     });
 
@@ -150,7 +151,7 @@ suite('client', function() {
       client.method('getData').then(data => {
         assert.deepEqual(data, { some: 'data' });
         done();
-      });
+      }, done);
     });
 
     test('sharedworker', function(done) {
@@ -168,7 +169,7 @@ suite('client', function() {
     });
   });
 
-  suite('Connecting to already running services', function() {
+  suite('Connecting to already running services /', function() {
     test('it connects without a thread reference', function(done) {
       thread = threads.create({
         src: '/base/test/lib/thread2.js',

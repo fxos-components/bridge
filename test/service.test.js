@@ -42,7 +42,6 @@ suite('Service /', function() {
 
     test('uncontracted method calls throw', function(done) {
       this.client.method('uncontractMethod').then(result => {
-        assert.equal(result, 'rebellion');
         done('should not be called');
       }).catch(err => {
         assert.ok(err);

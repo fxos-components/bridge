@@ -42,6 +42,7 @@ try {
     });
 
 } catch(e) {
+  console.log('ZZZ');
   console.log(e);
 }
 
