@@ -59,6 +59,70 @@ suite('client', function() {
     });
   });
 
+  suite('streams', function() {
+    setup(function() {
+      thread = threads.create({
+        src: '/base/test/lib/streams.js',
+        type: 'worker'
+      });
+      this.client = threads.client('test-streams', { thread: thread });
+    });
+
+    test('listen + close', function(done) {
+      var stream = this.client.stream('test-data', 'bar', 123);
+      var buffer = '';
+      stream.listen(function(data) {
+        buffer += data;
+      });
+      stream.closed.then(function() {
+        assert.equal(buffer, '1: bar 123 | 2: this should also work');
+        done();
+      });
+    });
+
+    test('listen + unlisten + close', function(done) {
+      var stream = this.client.stream('test-data', 'bar', 123);
+      var buffer = '';
+      stream.listen(function onData(data) {
+        buffer += data;
+        // stop listening for data
+        stream.unlisten(onData);
+      });
+      stream.closed.then(() => {
+        assert.equal(buffer, '1: bar 123');
+        done();
+      });
+    });
+
+    test('abort', function(done) {
+      var stream = this.client.stream('test-abort', 123);
+      stream.closed.then(data => {
+        done('close should not be called');
+      }).catch(abortReason => {
+        assert.equal(abortReason, 'someArg should not equal 123');
+        done();
+      });
+    });
+
+    test('listen + cancel', function(done) {
+      var stream = this.client.stream('test-cancel');
+      var buffer = '';
+      stream.listen(function(data) {
+        buffer += data;
+      });
+      stream.closed.then(() => {
+        done('close should not be called');
+      }).catch(() => {
+        done('abort should not be called');
+      });
+      stream.cancel('because I want it').then(function(data) {
+        assert.equal(data, 'because I want it!!!');
+        assert.ok(buffer.length > 0);
+        done();
+      });
+    });
+  });
+
   suite('dynamic threads', function() {
     test('It accepts threads that aren\'t created by the manager', function(done) {
       thread = threads.create({
