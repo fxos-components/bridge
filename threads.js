@@ -7,7 +7,7 @@ module.exports = {
   client: require('./lib/client')
 };
 
-},{"./lib/child-thread":2,"./lib/client":3,"./lib/manager":5,"./lib/service":6}],2:[function(require,module,exports){
+},{"./lib/child-thread":2,"./lib/client":4,"./lib/manager":6,"./lib/service":8}],2:[function(require,module,exports){
 
 'use strict';
 
@@ -164,7 +164,117 @@ ChildThread.prototype.destroyProcess = function() {
   }
 };
 
-},{"./emitter":4,"./utils":8}],3:[function(require,module,exports){
+},{"./emitter":5,"./utils":10}],3:[function(require,module,exports){
+
+'use strict';
+
+var Emitter = require('./emitter');
+var utils = require('./utils');
+
+module.exports = ClientStream;
+
+/**
+ * Readable stream instance returned by a `client.stream('methodName')` call.
+ *
+ * @param {Object} options
+ * @param {String} options.id Stream Id, used to match client/service streams
+ * @param {Client} options.client Client instance
+ */
+function ClientStream(options) {
+  this._ = new ClientStreamPrivate(options);
+}
+
+/**
+ * Promise that will be "resolved" when stream is closed with success, and
+ * "rejected" when service aborts the action (abort == error).
+ *
+ * @type Promise
+ */
+Object.defineProperty(ClientStream.prototype, 'closed', {
+  get: function() {
+    return this._.closed.promise;
+  }
+});
+
+/**
+ * Add a listener that will be called every time the service broadcasts a new
+ * chunk of data.
+ *
+ * @param {Function} callback
+ */
+ClientStream.prototype.listen = function(callback) {
+  this._.emitter.on('write', callback);
+};
+
+/**
+ * Removes "data" listener
+ *
+ * @param {Function} callback
+ */
+ClientStream.prototype.unlisten = function(callback) {
+  this._.emitter.off('write', callback);
+};
+
+/**
+ * Notify the service that action should be canceled
+ *
+ * @param {*} [reason] Optional data to be sent to service.
+ */
+ClientStream.prototype.cancel = function(reason) {
+  var client = this._.client;
+  var id = this._.id;
+  var canceled = utils.deferred();
+
+  client.request('streamcancel', {
+    id: id,
+    reason: reason
+  }).then(function(data) {
+    delete client._activeStreams[id];
+    canceled.resolve(data);
+  }).catch(function(e) {
+    // should delete the `_activeStreams` reference even if it didn't succeed
+    delete client._activeStreams[id];
+    canceled.reject(e);
+  });
+
+  return canceled.promise;
+};
+
+/**
+ * @private
+ */
+function ClientStreamPrivate(opts) {
+  this.id = opts.id;
+  this.client = opts.client;
+  this.closed = utils.deferred();
+  this.emitter = new Emitter();
+}
+
+/**
+ * Used internally by Client when it receives an "abort" event from the service
+ * @private
+ */
+ClientStreamPrivate.prototype.abort = function(reason) {
+  this.closed.reject(reason);
+};
+
+/**
+ * Used internally by Client when it receives a "close" event from the service
+ * @private
+ */
+ClientStreamPrivate.prototype.close = function() {
+  this.closed.resolve();
+};
+
+/**
+ * Used internally by Client when it receives a "write" event from the service
+ * @private
+ */
+ClientStreamPrivate.prototype.write = function(data) {
+  this.emitter.emit('write', data);
+};
+
+},{"./emitter":5,"./utils":10}],4:[function(require,module,exports){
 
 'use strict';
 
@@ -172,6 +282,7 @@ ChildThread.prototype.destroyProcess = function() {
  * Dependencies
  */
 
+var ClientStream = require('./client-stream');
 var thread = require('./thread-global');
 var Emitter = require('./emitter');
 var utils = require('./utils');
@@ -209,6 +320,7 @@ function Client(service, options) {
 
   this.requestQueue = [];
   this.requests = {};
+  this._activeStreams = {};
 
   this.connecting = false;
   this.connected = false;
@@ -220,6 +332,7 @@ function Client(service, options) {
   };
 
   this.messages = new utils.Messages(this, this.id, [
+    'streamevent',
     'response',
     'broadcast',
     'connected'
@@ -400,6 +513,15 @@ Client.prototype.ondisconnected = function() {
   thread.disconnection('outbound');
 };
 
+/**
+ * Call a method on the service. Promise will be resolved when service
+ * responds with the data or rejected when service throws an error or
+ * returns a rejected promise.
+ *
+ * @param {String} method Name of the method to be called
+ * @param {*} [...rest] data to be passed to to the method
+ * @returns {Promise}
+ */
 Client.prototype.method = function(method) {
   var args = [].slice.call(arguments, 1);
   debug('method', method, args);
@@ -407,6 +529,60 @@ Client.prototype.method = function(method) {
     name: method,
     args: args
   });
+};
+
+/**
+ * Call an action on the service. Used mainly for cases where service
+ * needs to send data in chunks and/or when you need to `cancel` the
+ * action before it's complete.
+ *
+ * @param {String} method Name of the method to be called
+ * @param {*} [...rest] data to be passed to to the method
+ * @returns {CLientStream}
+ */
+Client.prototype.stream = function(method) {
+  var args = [].slice.call(arguments, 1);
+  debug('stream', method, args);
+
+  // use an unique id to identify the stream, we pass this value to the service
+  // as well so we can map the service and client streams (they are different
+  // instances that are "connected" through the bridge by this id)
+  var id = utils.uuid();
+  var stream = new ClientStream({
+    id: id,
+    client: this
+  });
+  this._activeStreams[id] = stream;
+
+  this.request('stream', {
+    name: method,
+    args: args,
+    id: id
+  }).catch(function(err) {
+    this.onstreamevent({ type: 'abort', id: id, data: err });
+  }.bind(this));
+
+  return stream;
+};
+
+/**
+ * Called every time the service calls write/abort/close on the ServiceStream
+ *
+ * @param {Object} broadcast
+ * @param {String} broadcast.id Stream ID
+ * @param {String} broadcast.type Event type ("write", "abort" or "close")
+ * @private
+ */
+Client.prototype.onstreamevent = function(broadcast) {
+  var id = broadcast.id;
+  var type = broadcast.type;
+  var stream = this._activeStreams[id];
+
+  stream._[type](broadcast.data);
+
+  if (type === 'abort' || type === 'close') {
+    delete this._activeStreams[id];
+  }
 };
 
 Client.prototype.flushRequestQueue = function() {
@@ -418,7 +594,7 @@ Client.prototype.flushRequestQueue = function() {
   }
 };
 
-},{"./emitter":4,"./thread-global":7,"./utils":8}],4:[function(require,module,exports){
+},{"./client-stream":3,"./emitter":5,"./thread-global":9,"./utils":10}],5:[function(require,module,exports){
 
 /**
  * Exports
@@ -457,7 +633,7 @@ Emitter.prototype = {
   }
 };
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 
 'use strict';
 
@@ -575,7 +751,139 @@ ManagerInternal.prototype.createThread = function(descriptor) {
   return process;
 };
 
-},{"./child-thread":2,"./utils":8}],6:[function(require,module,exports){
+},{"./child-thread":2,"./utils":10}],7:[function(require,module,exports){
+
+'use strict';
+
+var utils = require('./utils');
+
+module.exports = ServiceStream;
+
+/**
+ * Writable Stream instance passed to the `service.stream` implementation
+ *
+ * @param {Object} options
+ * @param {String} options.id Stream ID used to sync client and service streams
+ * @param {BroadcastChannel} options.channel Channel used to postMessage
+ * @param {String} options.serviceId ID of the service
+ * @param {String} options.clientId ID of client that should receive message
+ */
+function ServiceStream(options) {
+  this._ = new PrivateServiceStream(this, options);
+}
+
+/**
+ * Services that allows clients to cancel the operation before it's complete
+ * should override the `stream.cancel` method.
+ *
+ * @param {*} [reason] Data sent from client about the cancellation
+ * @returns {(Promise|*)}
+ */
+ServiceStream.prototype.cancel = function(reason) {
+  var err = new TypeError('service should implement stream.cancel()');
+  return Promise.reject(err);
+};
+
+/**
+ * Signal to client that action was aborted during the process, this should be
+ * used as a way to communicate errors.
+ *
+ * @param {*} [data] Reason of failure
+ * @returns {Promise}
+ */
+ServiceStream.prototype.abort = function(data) {
+  return this._.post('abort', 'aborted', data);
+};
+
+/**
+ * Sends a chunk of data to the client.
+ *
+ * @param {*} data Chunk of data to be sent to client.
+ * @returns {Promise}
+ */
+ServiceStream.prototype.write = function(data) {
+  return this._.post('write', 'writable', data);
+};
+
+/**
+ * Closes the stream, signals that action was completed with success.
+ *
+ * @returns {Promise}
+ */
+ServiceStream.prototype.close = function() {
+  // according to whatwg streams spec, WritableStream#close() don't send data
+  return this._.post('close', 'closed');
+};
+
+/**
+ * @private
+ */
+function PrivateServiceStream(target, opts) {
+  this.target = target;
+  this.id = opts.id;
+  this.channel = opts.channel;
+  this.client = opts.clientId;
+  this.state = 'writable';
+  this.message = new utils.Messages(this, opts.serviceId, []);
+}
+
+/**
+ * validate the internal state to avoid passing data to the client when
+ * stream is already "closed/aborted/canceled".
+ * returns a Stream to simplify the "cancel" & "post" logic since they always
+ * need to return promises.
+ *
+ * @param {String} actionName
+ * @param {String} state
+ * @private
+ * @returns {Promise}
+ */
+PrivateServiceStream.prototype.validateState = function(actionName, state) {
+  if (this.state !== 'writable') {
+    var msg = 'Can\'t ' + actionName + ' on current state: ' + this.state;
+    return Promise.reject(new TypeError(msg));
+  }
+  this.state = state;
+  return Promise.resolve();
+};
+
+/**
+ * Validate the current state and call cancel on the target strem. Called by
+ * the Service when client sends a "streamcancel" message.
+ *
+ * @param {*} [reason] Reason for cancelation sent by the client
+ * @private
+ * @returns {Promise}
+ */
+PrivateServiceStream.prototype.cancel = function(reason) {
+  return this.validateState('cancel', 'canceled').then(function() {
+    return this.target.cancel(reason);
+  }.bind(this));
+};
+
+/**
+ * Validate the current state and post message to client.
+ *
+ * @param {String} type 'write', 'abort' or 'close'
+ * @param {String} state 'writable', 'aborted' or 'closed'
+ * @param {*} [data] Data to be sent to the client
+ * @private
+ * @returns {Promise}
+ */
+PrivateServiceStream.prototype.post = function(type, state, data) {
+  return this.validateState(type, state).then(function() {
+    return this.channel.postMessage(this.message.create('streamevent', {
+      recipient: this.client,
+      data: {
+        id: this.id,
+        type: type,
+        data: data
+      }
+    }));
+  }.bind(this));
+};
+
+},{"./utils":10}],8:[function(require,module,exports){
 
 'use strict';
 
@@ -583,6 +891,7 @@ ManagerInternal.prototype.createThread = function(descriptor) {
  * Dependencies
  */
 
+var ServiceStream = require('./service-stream');
 var thread = require('./thread-global');
 var utils = require('./utils');
 
@@ -591,9 +900,12 @@ var utils = require('./utils');
  */
 
 module.exports = Service;
+// expose stream just so we can unit test it
+module.exports.Stream = ServiceStream;
 
 /**
  * Mini Logger
+ *
  * @type {Function}
  */
 var debug = 0 ? console.log.bind(console, '[service]') : function(){};
@@ -609,15 +921,19 @@ var manager = new BroadcastChannel('threadsmanager');
 
 /**
  * Known request types.
+ *
  * @type {Array}
  */
 const REQUEST_TYPES = [
+  'stream',
+  'streamcancel',
   'method',
   'disconnect'
 ];
 
 /**
  * Possible errors.
+ *
  * @type {Object}
  */
 const ERRORS = {
@@ -628,50 +944,80 @@ const ERRORS = {
   5: 'arguments types don\'t match contract'
 };
 
+/**
+ * Initialize a new `Service`
+ *
+ * @param {String} name
+ */
 function Service(name) {
   if (!(this instanceof Service)) return new Service(name);
-
-  this._internal = new ServiceInternal(this, name);
+  this.private = new ServicePrivate(this, name);
 }
 
 /**
- * Register a method that will be exposed to all the clients.
+ * Register a method that will be
+ * exposed to all the clients.
+ *
  * @param {String} name Method name
  * @param {Function} fn Implementation
  */
 Service.prototype.method = function(name, fn) {
-  this._internal.methods[name] = fn;
+  this.private.addMethod(name, fn);
   return this;
 };
 
 /**
- * Register a contract that will be used to validate method calls and events.
- * @param {Object} contract Contract object
+ * Register a method that sends data through a writable stream.
+ *
+ * @param {String} name Method name
+ * @param {Function} fn Implementation
+ */
+Service.prototype.stream = function(name, fn) {
+  this.private.addStream(name, fn);
+  return this;
+};
+
+/**
+ * Register a contract that will be used
+ * to validate method calls and events.
+ *
+ * @param {Object} contract
  */
 Service.prototype.contract = function(contract) {
-  this._internal.setContract(contract);
+  this.private.setContract(contract);
   return this;
 };
 
 /**
  * Broadcast message to all the clients.
+ *
  * @param {String} type Event name.
  * @param {*} data Payload to be transmitted.
  */
 Service.prototype.broadcast = function(type, data) {
-  this._internal.broadcast(type, data);
+  this.private.broadcast(type, data);
   return this;
 };
 
-function ServiceInternal(external, name) {
+/**
+ * All the logic is contained inside
+ * this 'private' class. Public methods
+ * on `Service` proxy to `ServicePrivate`.
+ *
+ * @param {Service} service
+ * @param {String} name
+ */
+function ServicePrivate(service, name) {
   debug('initialize', name);
 
-  this.external = external;
+  this.public = service;
   this.id = utils.uuid();
   this.name = name;
   this.contract = null;
   this.methods = {};
   this.channels = {};
+  this.streams = {};
+  this.activeStreams = {};
 
   // Create a message factory that outputs
   // messages in a standardized format.
@@ -700,7 +1046,7 @@ function ServiceInternal(external, name) {
  *
  * @param  {Object} request
  */
-ServiceInternal.prototype.onrequest = function(request) {
+ServicePrivate.prototype.onrequest = function(request) {
   debug('on request', request);
   var type = request.type;
   var data = request.data;
@@ -712,7 +1058,7 @@ ServiceInternal.prototype.onrequest = function(request) {
   // Call the handler and make
   // sure return value is a promise
   Promise.resolve()
-    .then(function() { return this['on' + type](data); }.bind(this))
+    .then(function() { return this['on' + type](data, request); }.bind(this))
     .then(resolve, reject);
 
   function resolve(value) {
@@ -731,15 +1077,71 @@ ServiceInternal.prototype.onrequest = function(request) {
   }
 };
 
-ServiceInternal.prototype.onmethod = function(method) {
+/**
+ * Called when a client calls
+ * a service's method.
+ *
+ * @param  {Object} method
+ * @return {*}
+ */
+ServicePrivate.prototype.onmethod = function(method) {
   debug('method', method.name);
   var fn = this.methods[method.name];
   if (!fn) throw new Error(ERRORS[4]);
   this.checkMethodCall(method);
-  return fn.apply(this.external, method.args);
+  return fn.apply(this.public, method.args);
 };
 
-ServiceInternal.prototype.respond = function(request, result) {
+/**
+ * Called during `client.stream()`
+ *
+ * @param {Object} method
+ * @param {String} method.name Name of the function to be executed
+ * @param {String} method.id Stream Id, used to sync client and service streams
+ * @param {Object} request Request object
+ */
+ServicePrivate.prototype.onstream = function(method, request) {
+  debug('stream', method.name);
+  var fn = this.streams[method.name];
+  if (!fn) throw new Error(ERRORS[4]);
+
+  var id = method.id;
+  var stream = new ServiceStream({
+    id: id,
+    channel: this.channels[request.client],
+    serviceId: this.id,
+    clientId: request.client
+  });
+  this.activeStreams[id] = stream;
+
+  // always pass stream object as first argument to simplify the process
+  fn.apply(this.public, [stream].concat(method.args));
+  // stream doesn't return anything on purpose, we create another stream object
+  // on the client during request
+};
+
+/**
+ * Called when client requests for `streamcancel`
+ *
+ * @param {*} data Data sent from client (reason for cancelation).
+ * @return {Promise}
+ * @private
+ */
+ServicePrivate.prototype.onstreamcancel = function(data) {
+  var id = data.id;
+  var stream = this.activeStreams[id];
+  delete this.activeStreams[id];
+  return stream._.cancel(data.reason);
+};
+
+/**
+ * Respond to an unfulfilled
+ * request from a client
+ *
+ * @param  {Object} request
+ * @param  {*} result
+ */
+ServicePrivate.prototype.respond = function(request, result) {
   debug('respond', request.client, result);
   var channel = this.channels[request.client];
   channel.postMessage(this.message.create('response', {
@@ -761,7 +1163,7 @@ ServiceInternal.prototype.respond = function(request, result) {
  *
  * @private
  */
-ServiceInternal.prototype.ready = function() {
+ServicePrivate.prototype.ready = function() {
   debug('ready');
   thread.broadcast('serviceready', {
     id: this.id,
@@ -769,7 +1171,20 @@ ServiceInternal.prototype.ready = function() {
   });
 };
 
-ServiceInternal.prototype.onconnect = function(data) {
+/**
+ * Runs on an inbound connection
+ * attempt from a client.
+ *
+ * A new dedicated `BroadcastChannel`
+ * is opened for each client.
+ *
+ * A 'connected' message is sent down the
+ * new client channel to confirm the
+ * connection.
+ *
+ * @param  {Object} data
+ */
+ServicePrivate.prototype.onconnect = function(data) {
   var client = data.client;
   var contract = data.contract;
   var service = data.service;
@@ -798,7 +1213,7 @@ ServiceInternal.prototype.onconnect = function(data) {
 };
 
 
-ServiceInternal.prototype.ondisconnect = function(client) {
+ServicePrivate.prototype.ondisconnect = function(client) {
   if (!client) return;
   if (!this.channels[client]) return;
   debug('on disconnect', client);
@@ -813,19 +1228,55 @@ ServiceInternal.prototype.ondisconnect = function(client) {
   return deferred.promise;
 };
 
-ServiceInternal.prototype.ondisconnected = function(client) {
+ServicePrivate.prototype.ondisconnected = function(client) {
   debug('disconnected', client);
   this.channels[client].close();
   delete this.channels[client];
 };
 
-ServiceInternal.prototype.setContract = function(contract) {
+ServicePrivate.prototype.setContract = function(contract) {
   if (!contract) return;
   this.contract = contract;
   debug('contract set', contract);
 };
 
-ServiceInternal.prototype.checkMethodCall = function(method) {
+/**
+ * Add a method to the method registry.
+ *
+ * TODO: We should check the the
+ * `name` and function signature
+ * match anything defined in the
+ * contract. Or perhaps this could
+ * be done in `.setContract()`?
+ *
+ * @param {String}   name
+ * @param {Function} fn
+ */
+ServicePrivate.prototype.addMethod = function(name, fn) {
+  this.methods[name] = fn;
+};
+
+
+/**
+ * Add a method to the stream registry.
+ *
+ * @param {String}   name
+ * @param {Function} fn
+ */
+ServicePrivate.prototype.addStream = function(name, fn) {
+  this.streams[name] = fn;
+};
+
+/**
+ * Check a method call matches a registered
+ * method and that the arguments passed
+ * adhere to a defined contract.
+ *
+ * Throws an error when invalid.
+ *
+ * @param  {Object} method
+ */
+ServicePrivate.prototype.checkMethodCall = function(method) {
   debug('check method call', method);
 
   var name = method.name;
@@ -852,12 +1303,19 @@ ServiceInternal.prototype.checkMethodCall = function(method) {
  *
  * @private
  */
-ServiceInternal.prototype.listen = function() {
+ServicePrivate.prototype.listen = function() {
   manager.addEventListener('message', this.message.handle);
   thread.on('message', this.message.handle);
 };
 
-ServiceInternal.prototype.broadcast = function(type, data) {
+/**
+ * Broadcast a message to all
+ * connected clients.
+ *
+ * @param  {String} type
+ * @param  {*} data to pass with the event
+ */
+ServicePrivate.prototype.broadcast = function(type, data) {
   debug('broadcast', type, data);
   for (var client in this.channels) {
     this.channels[client].postMessage(this.message.create('broadcast', {
@@ -870,7 +1328,7 @@ ServiceInternal.prototype.broadcast = function(type, data) {
   }
 };
 
-},{"./thread-global":7,"./utils":8}],7:[function(require,module,exports){
+},{"./service-stream":7,"./thread-global":9,"./utils":10}],9:[function(require,module,exports){
 
 /**
  * Dependencies
@@ -1021,7 +1479,7 @@ function getThreadId() {
 
 module.exports = new ThreadGlobal();
 
-},{"./emitter":4,"./utils":8}],8:[function(require,module,exports){
+},{"./emitter":5,"./utils":10}],10:[function(require,module,exports){
 'use strict';
 
 /**
