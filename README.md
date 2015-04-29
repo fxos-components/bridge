@@ -1,4 +1,4 @@
-## threads
+# threads [![](https://travis-ci.org/gaia-components/threads.svg)](https://travis-ci.org/gaia-components/threads) [![devDependency Status](https://david-dm.org/gaia-components/threads/dev-status.svg)](https://david-dm.org/gaia-components/threads#info=devDependencies)
 
 Exposes services from one 'thread' to another.
 
