@@ -14,8 +14,8 @@ suite('ServiceStream /', function() {
       id: 'fake-stream-id',
       channel: {
         postMessage: msg => {
-          lastMessage = msg;
-          assert.include(['abort', 'close', 'write'], msg.data.type);
+          lastMessage = msg.data;
+          assert.include(['abort', 'close', 'write'], msg.data.data.type);
         }
       },
       serviceId: '123456',
@@ -37,7 +37,7 @@ suite('ServiceStream /', function() {
         assert.equal(lastMessage.data.type, 'close');
         done();
       });
-    });
+    }).then(done, done);
   });
 
   test('close + close', function(done) {
