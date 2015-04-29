@@ -7,7 +7,7 @@ module.exports = {
   client: require('./lib/client')
 };
 
-},{"./lib/child-thread":2,"./lib/client":4,"./lib/manager":6,"./lib/service":9}],2:[function(require,module,exports){
+},{"./lib/child-thread":2,"./lib/client":3,"./lib/manager":6,"./lib/service":8}],2:[function(require,module,exports){
 'use strict';
 
 /**
@@ -250,169 +250,11 @@ ChildThread.prototype.destroyProcess = function() {
  * Dependencies
  */
 
-var Emitter = require('./emitter');
-var utils = require('./utils');
-
-/**
- * Exports
- */
-
-module.exports = ClientStream;
-
-/**
- * Mini Logger
- *
- * @type {Function}
- */
-
-var debug = 0 ? console.log.bind(console, '[ClientStream]') : function() {};
-
-/**
- * Readable stream instance returned by
- * a `client.stream('methodName')` call.
- *
- * @param {Object} options
- * @param {String} options.id Stream Id, used to match client/service streams
- * @param {Client} options.client Client instance
- */
-
-function ClientStream(options) {
-  this._ = new ClientStreamPrivate(options);
-}
-
-/**
- * Promise that will be "resolved" when
- * stream is closed with success, and
- * "rejected" when service aborts
- * the action (abort == error).
- *
- * @type Promise
- */
-
-Object.defineProperty(ClientStream.prototype, 'closed', {
-  get: function() { return this._.closed.promise; }
-});
-
-/**
- * Add a listener that will be called
- * every time the service broadcasts
- * a new chunk of data.
- *
- * @param {Function} callback
- */
-
-ClientStream.prototype.listen = function(callback) {
-  debug('listen', callback);
-  this._.emitter.on('write', callback);
-};
-
-/**
- * Removes 'data' listener
- *
- * @param {Function} callback
- */
-
-ClientStream.prototype.unlisten = function(callback) {
-  debug('unlisten', callback);
-  this._.emitter.off('write', callback);
-};
-
-/**
- * Notify the service that
- * action should be canceled
- *
- * @param {*} [reason] Optional data to be sent to service.
- */
-
-ClientStream.prototype.cancel = function(reason) {
-  debug('cancel', reason);
-
-  var canceled = utils.deferred();
-  var client = this._.client;
-  var id = this._.id;
-
-  client.request('streamcancel', {
-    id: id,
-    reason: reason
-  }).then(function(data) {
-    delete client._activeStreams[id];
-    canceled.resolve(data);
-  }).catch(function(e) {
-    // should delete the `_activeStreams`
-    // reference even if it didn't succeed
-    delete client._activeStreams[id];
-    canceled.reject(e);
-  });
-
-  return canceled.promise;
-};
-
-/**
- * Initialize a new `ClientStreamPrivate`.
- *
- * @param {Object} options
- * @private
- */
-
-function ClientStreamPrivate(options) {
-  this.id = options.id;
-  this.client = options.client;
-  this.closed = utils.deferred();
-  this.emitter = new Emitter();
-  debug('initialized');
-}
-
-/**
- * Used internally by Client when
- * it receives an 'abort' event
- * from the service.
- *
- * @private
- */
-
-ClientStreamPrivate.prototype.abort = function(reason) {
-  debug('abort', reason);
-  this.closed.reject(reason);
-};
-
-/**
- * Used internally by Client when
- * it receives a 'close' event
- * from the service.
- *
- * @private
- */
-
-ClientStreamPrivate.prototype.close = function() {
-  debug('close');
-  this.closed.resolve();
-};
-
-/**
- * Used internally by Client when
- * it receives a 'write' event
- * from the service.
- *
- * @private
- */
-
-ClientStreamPrivate.prototype.write = function(data) {
-  debug('write', data);
-  this.emitter.emit('write', data);
-};
-
-},{"./emitter":5,"./utils":11}],4:[function(require,module,exports){
-'use strict';
-
-/**
- * Dependencies
- */
-
-var ClientStream = require('./client-stream');
-var thread = require('./thread-global');
-var Messenger = require('./messenger');
-var Emitter = require('./emitter');
-var utils = require('./utils');
+var thread = require('../thread-global');
+var ClientStream = require('./stream');
+var Messenger = require('../messenger');
+var Emitter = require('../emitter');
+var utils = require('../utils');
 
 /**
  * Exports
@@ -778,7 +620,165 @@ Client.prototype.flushRequestQueue = function() {
   }
 };
 
-},{"./client-stream":3,"./emitter":5,"./messenger":7,"./thread-global":10,"./utils":11}],5:[function(require,module,exports){
+},{"../emitter":5,"../messenger":7,"../thread-global":10,"../utils":11,"./stream":4}],4:[function(require,module,exports){
+'use strict';
+
+/**
+ * Dependencies
+ */
+
+var Emitter = require('../emitter');
+var utils = require('../utils');
+
+/**
+ * Exports
+ */
+
+module.exports = ClientStream;
+
+/**
+ * Mini Logger
+ *
+ * @type {Function}
+ */
+
+var debug = 0 ? console.log.bind(console, '[ClientStream]') : function() {};
+
+/**
+ * Readable stream instance returned by
+ * a `client.stream('methodName')` call.
+ *
+ * @param {Object} options
+ * @param {String} options.id Stream Id, used to match client/service streams
+ * @param {Client} options.client Client instance
+ */
+
+function ClientStream(options) {
+  this._ = new ClientStreamPrivate(options);
+}
+
+/**
+ * Promise that will be "resolved" when
+ * stream is closed with success, and
+ * "rejected" when service aborts
+ * the action (abort == error).
+ *
+ * @type Promise
+ */
+
+Object.defineProperty(ClientStream.prototype, 'closed', {
+  get: function() { return this._.closed.promise; }
+});
+
+/**
+ * Add a listener that will be called
+ * every time the service broadcasts
+ * a new chunk of data.
+ *
+ * @param {Function} callback
+ */
+
+ClientStream.prototype.listen = function(callback) {
+  debug('listen', callback);
+  this._.emitter.on('write', callback);
+};
+
+/**
+ * Removes 'data' listener
+ *
+ * @param {Function} callback
+ */
+
+ClientStream.prototype.unlisten = function(callback) {
+  debug('unlisten', callback);
+  this._.emitter.off('write', callback);
+};
+
+/**
+ * Notify the service that
+ * action should be canceled
+ *
+ * @param {*} [reason] Optional data to be sent to service.
+ */
+
+ClientStream.prototype.cancel = function(reason) {
+  debug('cancel', reason);
+
+  var canceled = utils.deferred();
+  var client = this._.client;
+  var id = this._.id;
+
+  client.request('streamcancel', {
+    id: id,
+    reason: reason
+  }).then(function(data) {
+    delete client._activeStreams[id];
+    canceled.resolve(data);
+  }).catch(function(e) {
+    // should delete the `_activeStreams`
+    // reference even if it didn't succeed
+    delete client._activeStreams[id];
+    canceled.reject(e);
+  });
+
+  return canceled.promise;
+};
+
+/**
+ * Initialize a new `ClientStreamPrivate`.
+ *
+ * @param {Object} options
+ * @private
+ */
+
+function ClientStreamPrivate(options) {
+  this.id = options.id;
+  this.client = options.client;
+  this.closed = utils.deferred();
+  this.emitter = new Emitter();
+  debug('initialized');
+}
+
+/**
+ * Used internally by Client when
+ * it receives an 'abort' event
+ * from the service.
+ *
+ * @private
+ */
+
+ClientStreamPrivate.prototype.abort = function(reason) {
+  debug('abort', reason);
+  this.closed.reject(reason);
+};
+
+/**
+ * Used internally by Client when
+ * it receives a 'close' event
+ * from the service.
+ *
+ * @private
+ */
+
+ClientStreamPrivate.prototype.close = function() {
+  debug('close');
+  this.closed.resolve();
+};
+
+/**
+ * Used internally by Client when
+ * it receives a 'write' event
+ * from the service.
+ *
+ * @private
+ */
+
+ClientStreamPrivate.prototype.write = function(data) {
+  debug('write', data);
+  this.emitter.emit('write', data);
+};
+
+},{"../emitter":5,"../utils":11}],5:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1371,192 +1371,10 @@ function send(channel, params) {
  * Dependencies
  */
 
-var Messenger = require('./messenger');
-
-/**
- * Exports
- */
-
-module.exports = ServiceStream;
-
-/**
- * Mini Logger
- *
- * @type {Function}
- */
-
-var debug = 0 ? console.log.bind(console, '[ServiceStream]') : function() {};
-
-/**
- * Writable Stream instance passed to the
- * `service.stream` implementation
- *
- * @param {Object} options
- * @param {String} options.id Stream ID used to sync client and service streams
- * @param {BroadcastChannel} options.channel Channel used to postMessage
- * @param {String} options.serviceId ID of the service
- * @param {String} options.clientId ID of client that should receive message
- */
-
-function ServiceStream(options) {
-  this._ = new PrivateServiceStream(this, options);
-}
-
-/**
- * Services that allows clients to
- * cancel the operation before it's
- * complete should override the
- * `stream.cancel` method.
- *
- * @param {*} [reason] Data sent from client about the cancellation
- * @returns {(Promise|*)}
- */
-
-ServiceStream.prototype.cancel = function(reason) {
-  var err = new TypeError('service should implement stream.cancel()');
-  return Promise.reject(err);
-};
-
-/**
- * Signal to client that action was
- * aborted during the process, this
- * should be used as a way to
- * communicate errors.
- *
- * @param {*} [data] Reason of failure
- * @returns {Promise}
- */
-
-ServiceStream.prototype.abort = function(data) {
-  debug('abort', data);
-  return this._.post('abort', 'aborted', data);
-};
-
-/**
- * Sends a chunk of data to the client.
- *
- * @param {*} data Chunk of data to be sent to client.
- * @returns {Promise}
- */
-
-ServiceStream.prototype.write = function(data) {
-  debug('write', data);
-  return this._.post('write', 'writable', data);
-};
-
-/**
- * Closes the stream, signals that
- * action was completed with success.
- *
- * According to whatwg streams spec,
- * WritableStream#close() doesn't send data.
- *
- * @returns {Promise}
- */
-
-ServiceStream.prototype.close = function() {
-  debug('close');
-  return this._.post('close', 'closed');
-};
-
-/**
- * Initialize a new `ClientStreamPrivate`.
- *
- * @param {ServiceStream} target
- * @param {Object} options
- * @private
- */
-
-function PrivateServiceStream(target, options) {
-  this.target = target;
-  this.id = options.id;
-  this.channel = options.channel;
-  this.client = options.clientId;
-  this.state = 'writable';
-  this.messenger = new Messenger(options.serviceId, '[ServiceStream]');
-  debug('initialized', target, options);
-}
-
-/**
- * Validate the internal state to avoid
- * passing data to the client when stream
- * is already 'closed/aborted/canceled'.
- *
- * Returns a Stream to simplify the 'cancel'
- * & 'post' logic since they always need
- * to return promises.
- *
- * @param {String} actionName
- * @param {String} state
- * @returns {Promise}
- * @private
- */
-
-PrivateServiceStream.prototype.validateState = function(actionName, state) {
-  if (this.state !== 'writable') {
-    var msg = 'Can\'t ' + actionName + ' on current state: ' + this.state;
-    return Promise.reject(new TypeError(msg));
-  }
-
-  this.state = state;
-  return Promise.resolve();
-};
-
-/**
- * Validate the current state and
- * call cancel on the target stream.
- *
- * Called by the Service when client
- * sends a 'streamcancel' message.
- *
- * @param {*} [reason] Reason for cancelation sent by the client
- * @returns {Promise}
- * @private
- */
-
-PrivateServiceStream.prototype.cancel = function(reason) {
-  return this.validateState('cancel', 'canceled').then(function() {
-    return this.target.cancel(reason);
-  }.bind(this));
-};
-
-/**
- * Validate the current state and post message to client.
- *
- * @param {String} type 'write', 'abort' or 'close'
- * @param {String} state 'writable', 'aborted' or 'closed'
- * @param {*} [data] Data to be sent to the client
- * @returns {Promise}
- * @private
- */
-
-PrivateServiceStream.prototype.post = function(type, state, data) {
-  debug('post', type, state, data);
-  return this.validateState(type, state).then(function() {
-    debug('validated', this.channel);
-    this.messenger.push(this.channel, {
-      type: 'streamevent',
-      recipient: this.client,
-      data: {
-        id: this.id,
-        type: type,
-        data: data
-      }
-    });
-  }.bind(this));
-};
-
-},{"./messenger":7}],9:[function(require,module,exports){
-'use strict';
-
-/**
- * Dependencies
- */
-
-var ServiceStream = require('./service-stream');
-var thread = require('./thread-global');
-var Messenger = require('./messenger');
-var utils = require('./utils');
+var thread = require('../thread-global');
+var Messenger = require('../messenger');
+var ServiceStream = require('./stream');
+var utils = require('../utils');
 
 /**
  * exports
@@ -1951,7 +1769,189 @@ function error(id) {
   });
 }
 
-},{"./messenger":7,"./service-stream":8,"./thread-global":10,"./utils":11}],10:[function(require,module,exports){
+},{"../messenger":7,"../thread-global":10,"../utils":11,"./stream":9}],9:[function(require,module,exports){
+'use strict';
+
+/**
+ * Dependencies
+ */
+
+var Messenger = require('../messenger');
+
+/**
+ * Exports
+ */
+
+module.exports = ServiceStream;
+
+/**
+ * Mini Logger
+ *
+ * @type {Function}
+ */
+
+var debug = 0 ? console.log.bind(console, '[ServiceStream]') : function() {};
+
+/**
+ * Writable Stream instance passed to the
+ * `service.stream` implementation
+ *
+ * @param {Object} options
+ * @param {String} options.id Stream ID used to sync client and service streams
+ * @param {BroadcastChannel} options.channel Channel used to postMessage
+ * @param {String} options.serviceId ID of the service
+ * @param {String} options.clientId ID of client that should receive message
+ */
+
+function ServiceStream(options) {
+  this._ = new PrivateServiceStream(this, options);
+}
+
+/**
+ * Services that allows clients to
+ * cancel the operation before it's
+ * complete should override the
+ * `stream.cancel` method.
+ *
+ * @param {*} [reason] Data sent from client about the cancellation
+ * @returns {(Promise|*)}
+ */
+
+ServiceStream.prototype.cancel = function(reason) {
+  var err = new TypeError('service should implement stream.cancel()');
+  return Promise.reject(err);
+};
+
+/**
+ * Signal to client that action was
+ * aborted during the process, this
+ * should be used as a way to
+ * communicate errors.
+ *
+ * @param {*} [data] Reason of failure
+ * @returns {Promise}
+ */
+
+ServiceStream.prototype.abort = function(data) {
+  debug('abort', data);
+  return this._.post('abort', 'aborted', data);
+};
+
+/**
+ * Sends a chunk of data to the client.
+ *
+ * @param {*} data Chunk of data to be sent to client.
+ * @returns {Promise}
+ */
+
+ServiceStream.prototype.write = function(data) {
+  debug('write', data);
+  return this._.post('write', 'writable', data);
+};
+
+/**
+ * Closes the stream, signals that
+ * action was completed with success.
+ *
+ * According to whatwg streams spec,
+ * WritableStream#close() doesn't send data.
+ *
+ * @returns {Promise}
+ */
+
+ServiceStream.prototype.close = function() {
+  debug('close');
+  return this._.post('close', 'closed');
+};
+
+/**
+ * Initialize a new `ClientStreamPrivate`.
+ *
+ * @param {ServiceStream} target
+ * @param {Object} options
+ * @private
+ */
+
+function PrivateServiceStream(target, options) {
+  this.target = target;
+  this.id = options.id;
+  this.channel = options.channel;
+  this.client = options.clientId;
+  this.state = 'writable';
+  this.messenger = new Messenger(options.serviceId, '[ServiceStream]');
+  debug('initialized', target, options);
+}
+
+/**
+ * Validate the internal state to avoid
+ * passing data to the client when stream
+ * is already 'closed/aborted/canceled'.
+ *
+ * Returns a Stream to simplify the 'cancel'
+ * & 'post' logic since they always need
+ * to return promises.
+ *
+ * @param {String} actionName
+ * @param {String} state
+ * @returns {Promise}
+ * @private
+ */
+
+PrivateServiceStream.prototype.validateState = function(actionName, state) {
+  if (this.state !== 'writable') {
+    var msg = 'Can\'t ' + actionName + ' on current state: ' + this.state;
+    return Promise.reject(new TypeError(msg));
+  }
+
+  this.state = state;
+  return Promise.resolve();
+};
+
+/**
+ * Validate the current state and
+ * call cancel on the target stream.
+ *
+ * Called by the Service when client
+ * sends a 'streamcancel' message.
+ *
+ * @param {*} [reason] Reason for cancelation sent by the client
+ * @returns {Promise}
+ * @private
+ */
+
+PrivateServiceStream.prototype.cancel = function(reason) {
+  return this.validateState('cancel', 'canceled').then(function() {
+    return this.target.cancel(reason);
+  }.bind(this));
+};
+
+/**
+ * Validate the current state and post message to client.
+ *
+ * @param {String} type 'write', 'abort' or 'close'
+ * @param {String} state 'writable', 'aborted' or 'closed'
+ * @param {*} [data] Data to be sent to the client
+ * @returns {Promise}
+ * @private
+ */
+
+PrivateServiceStream.prototype.post = function(type, state, data) {
+  debug('post', type, state, data);
+  return this.validateState(type, state).then(function() {
+    debug('validated', this.channel);
+    this.messenger.push(this.channel, {
+      type: 'streamevent',
+      recipient: this.client,
+      data: {
+        id: this.id,
+        type: type,
+        data: data
+      }
+    });
+  }.bind(this));
+};
+
+},{"../messenger":7}],10:[function(require,module,exports){
 'use strict';
 
 /**
