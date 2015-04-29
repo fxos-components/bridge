@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>moz-contacts</title>
+  <script src="../../threads.js"></script>
+  <script>
+    threads.service('moz-contacts')
+      .method('get', function() {
+        return [
+          {
+            firstName: 'Francisco',
+            lastName: 'Jordano'
+          },
+          {
+            firstName: 'Wilson',
+            lastName: 'Page'
+          },
+          {
+            firstName: 'Guillaume',
+            lastName: 'Marty'
+          }
+        ];
+      });
+  </script>
+</head>
+<body>
+
+</body>
+</html>

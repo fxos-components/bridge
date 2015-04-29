@@ -154,7 +154,11 @@ suite('client', function() {
       }, done);
     });
 
-    test('sharedworker', function(done) {
+    // WARNING: SharedWorkers can live across tests
+    // which can impact results. Whenver testing
+    // SharedWorkers be sure to create them inside
+    // <iframe> and .remove() iframe to kill them.
+    test.skip('sharedworker', function(done) {
       thread = threads.create({
         src: '/base/test/lib/thread.js',
         type: 'sharedworker'
