@@ -18,8 +18,8 @@ suite('ChildThread', function() {
       var iframe = document.createElement('iframe');
       iframe.src = '/base/test/lib/view.html';
       this.dom.appendChild(iframe);
-      iframe.onload = e => {
-        setTimeout(() => {
+      iframe.onload = function() {
+        setTimeout(function() {
           var thread = threads.create({
             target: iframe,
             type: 'window'
@@ -27,7 +27,7 @@ suite('ChildThread', function() {
 
           var client = threads.client('little-browser', { thread: thread });
 
-          client.method('getTitle').then(title => {
+          client.method('getTitle').then(function(title) {
             assert.equal(title, 'page-title');
             done();
           });
@@ -47,7 +47,7 @@ suite('ChildThread', function() {
 
       var client = threads.client('little-browser', { thread: thread });
 
-      client.method('getTitle').then(title => {
+      client.method('getTitle').then(function(title) {
         assert.equal(title, 'page-title');
         done();
       });

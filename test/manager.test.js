@@ -26,7 +26,7 @@ suite('Manager', function() {
 
   test('simple call', function(done) {
     client = threads.client('view-server');
-    client.method('getData').then(data => {
+    client.method('getData').then(function(data) {
       assert.deepEqual(data, { some: 'data' });
       done();
     });
@@ -56,7 +56,7 @@ suite('Manager', function() {
       Promise.all([
         client1.method('getData'),
         client2.method('getData')
-      ]).then(results => {
+      ]).then(function(results) {
         assert.deepEqual(results[0], { some: 'data' });
         assert.deepEqual(results[1], { some: 'data' });
         sinon.assert.calledOnce(window.Worker);
@@ -67,7 +67,7 @@ suite('Manager', function() {
       Promise.all([
         client1.disconnect(),
         client2.disconnect()
-      ]).then(() => done(), done);
+      ]).then(function() { done(); }, done);
     });
   });
 });

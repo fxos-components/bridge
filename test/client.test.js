@@ -30,11 +30,11 @@ suite('client', function() {
       Promise.all([
         client1.connect(),
         client2.connect()
-      ]).then(() => {
+      ]).then(function() {
         client1.disconnect();
         client2.disconnect();
 
-        thread.on('redundant', () => {
+        thread.on('redundant', function() {
           done();
         });
       });
@@ -50,7 +50,7 @@ suite('client', function() {
 
       var client = threads.client('test-events', { thread: thread });
 
-      client.on('test-event', data => {
+      client.on('test-event', function(data) {
         assert.deepEqual(data, { event: 'data' });
         done();
       });
@@ -89,7 +89,7 @@ suite('client', function() {
         // stop listening for data
         stream.unlisten(onData);
       });
-      stream.closed.then(() => {
+      stream.closed.then(function() {
         assert.equal(buffer, '1: bar 123');
         done();
       });
@@ -97,9 +97,9 @@ suite('client', function() {
 
     test('abort', function(done) {
       var stream = this.client.stream('test-abort', 123);
-      stream.closed.then(data => {
+      stream.closed.then(function(data) {
         done('close should not be called');
-      }).catch(abortReason => {
+      }).catch(function(abortReason) {
         assert.equal(abortReason, 'someArg should not equal 123');
         done();
       });
@@ -111,9 +111,9 @@ suite('client', function() {
       stream.listen(function(data) {
         buffer += data;
       });
-      stream.closed.then(() => {
+      stream.closed.then(function() {
         done('close should not be called');
-      }).catch(() => {
+      }).catch(function() {
         done('abort should not be called');
       });
       stream.cancel('because I want it').then(function(data) {
@@ -134,7 +134,7 @@ suite('client', function() {
 
       var client = threads.client('little-browser', { thread: thread });
 
-      client.method('getTitle').then(title => {
+      client.method('getTitle').then(function(title) {
         assert.equal(title, 'page-title');
         done();
       });
@@ -148,7 +148,7 @@ suite('client', function() {
 
       var client = threads.client('view-server', { thread: thread });
 
-      client.method('getData').then(data => {
+      client.method('getData').then(function(data) {
         assert.deepEqual(data, { some: 'data' });
         done();
       }, done);
@@ -162,7 +162,7 @@ suite('client', function() {
 
       var client = threads.client('view-server', { thread: thread });
 
-      client.method('getData').then(data => {
+      client.method('getData').then(function(data) {
         assert.deepEqual(data, { some: 'data' });
         done();
       });
@@ -176,10 +176,10 @@ suite('client', function() {
         type: 'worker'
       });
 
-      thread.on('serviceready', service => {
+      thread.on('serviceready', function(service) {
         var client = threads.client('thread2-service');
 
-        client.method('getData').then(data => {
+        client.method('getData').then(function(data) {
           assert.deepEqual(data, { some: 'data' });
           done();
         });

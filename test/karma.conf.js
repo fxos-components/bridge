@@ -2,7 +2,7 @@
 module.exports = function(config) {
   config.set({
     frameworks: ['mocha', 'sinon-chai'],
-    browsers: ['firefox_latest'],
+    browsers: ['FirefoxLatest'],
     basePath: '../',
     client: {
       captureConsole: true,
@@ -10,7 +10,7 @@ module.exports = function(config) {
     },
 
     customLaunchers: {
-      firefox_latest: {
+      FirefoxLatest: {
         base: 'FirefoxNightly',
         prefs: {
           'dom.webcomponents.enabled': true

@@ -35,35 +35,35 @@ suite('Service /', function() {
     });
 
     test('contract method calls are allowed', function(done) {
-      this.client.method('contractMethod', 'foo').then(result => {
+      this.client.method('contractMethod', 'foo').then(function(result) {
         assert.equal(result, 'conformance: foo');
       }).then(done, done);
     });
 
     test('uncontracted method calls throw', function(done) {
-      this.client.method('uncontractMethod').then(result => {
+      this.client.method('uncontractMethod').then(function(result) {
         done('should not be called');
-      }).catch(err => {
+      }).catch(function(err) {
         assert.ok(err);
         done();
       }).then(done, done);
     });
 
     test('calling with incorrect argument type throws', function(done) {
-      this.client.method('contractMethod', {}).then(result => {
+      this.client.method('contractMethod', {}).then(function(result) {
         assert.equal(result, 'rebellion');
         done('should not be called');
-      }).catch(err => {
+      }).catch(function(err) {
         assert.ok(err);
         done();
       }).then(done, done);
     });
 
     test('calling with incorrect arguments.length throws', function(done) {
-      this.client.method('contractMethod', '1', '2', '3').then(result => {
+      this.client.method('contractMethod', '1', '2', '3').then(function(result) {
         assert.equal(result, 'rebellion');
         done('should not be called');
-      }).catch(err => {
+      }).catch(function(err) {
         assert.ok(err);
         done();
       }).then(done, done);
@@ -83,16 +83,16 @@ suite('Service /', function() {
     });
 
     test('contract method calls are allowed', function(done) {
-      this.client.method('contractMethod', 'foo').then(result => {
+      this.client.method('contractMethod', 'foo').then(function(result) {
         assert.equal(result, 'conformance: foo');
       }).then(done, done);
     });
 
     test('uncontracted method calls throw', function(done) {
-      this.client.method('uncontractMethod').then(result => {
+      this.client.method('uncontractMethod').then(function(result) {
         assert.equal(result, 'rebellion');
         done('should not be called');
-      }).catch(err => {
+      }).catch(function(err) {
         assert.ok(err);
         done();
       }).then(done, done);
