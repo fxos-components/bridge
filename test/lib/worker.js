@@ -14,10 +14,10 @@ var database = {
 };
 
 server.handle('getContact', function(id) {
-  return new Promise((resolve, reject) => {
+  return new Promise(function(resolve, reject) {
     var record = database[id];
     if (!record) return reject(new Error('no contact found'));
-    setTimeout(() => { resolve(record); }, 100);
+    setTimeout(function() { resolve(record); }, 100);
   });
 });
 
