@@ -52,6 +52,20 @@ threads.manager({
 });
 ```
 
+#### Supplying a `target`
+
+If you'd like to spawn you own thread you can pass the `target` thread directly to the manager definition. Once handed over to the `Manager` the thread is out of your control.
+
+```js
+threads.manager({
+  'my-service': {
+    src: '/workers/my-service.html',
+    type: 'window',
+    target: document.querySelector('iframe')
+  }
+});
+```
+
 ### Events
 
 Events can be fired from a `Service`, these will trigger any subscribed callbacks on the client-side.
@@ -69,6 +83,14 @@ setInterval(() => {
 var client = threads.client('my-service');
 client.on('tick', count => console.log('tick', count));
 ```
+
+#### Client#on(name, callback)
+
+Subscribe to a service broadcast. Callback will be passed `data` as the first argument.
+
+#### Service#broadcast(name[, data, [clients]])
+
+Broadcast's an event from a `Service` to connected `Client`s. The third argument can be used to target selected clients by their `client.id`.
 
 ### Contracts
 
@@ -90,6 +112,14 @@ threads.manager({
     }
   }
 });
+```
+
+Contracts can alternatively be attached directly to a `Service`.
+
+```js
+threads.service('my-service')
+  .contract(myServiceContract)
+  .method('myMethod', function(param) { return 'hello: ' + param; });
 ```
 
 ### Streams
@@ -152,14 +182,9 @@ The methods `close()`, `abort()` and `write()` return Promises that can be used
 to validate if action was executed (eg. `write` have no effect after `close` so
 promise will be rejected).
 
-
-### Bypassing the Manager
-
-
-
 ### Memory management
 
-Threads keep track of how many inbound clients are connected to them. When the last client disconnects they will broadcast a `'redundant'` event. Whatever spawned the thread (usually the Manager) can then destroy it to free up memory.
+Each thread keeps track of how many inbound clients are connected to them. When the last client disconnects they will broadcast a `'redundant'` event. Whatever spawned the thread (usually the Manager) can then destroy it to free up memory.
 
 To manage memory in you apps you can `.disconnect()` clients when the app is in the background and re`.connect() when they come back to the foreground.
 
@@ -174,11 +199,3 @@ threads.service('my-service@v0.1.0', ...);
 ```js
 threads.client('my-service@v0.1.0');
 ```
-
-### Open questions
-
-- When `type: 'window'` should we do the job of loading this in a `.html` document, or is it best to leave this to the user.
-
-- Workers use `importScripts()` and window `<script>`, what is a sensible format that would allow authoring script that will run in either environment type?
-
-- With `BroadcastChannel` it's possible for a `Worker` to have a client from another browser 'tab'. This is dangerous as if 'tab1' is closed, any clients in 'tab2' that depend on services in 'tab1' will be disconnected. This could be fixed by ensuring only `SharedWorkers` can used for cross-tab services and that each tab's manager calls `new SharedWorker(...)`.
