@@ -7,10 +7,13 @@ suite('Manager', function() {
   setup(function() {
     clients = [];
     this.sinon = sinon.sandbox.create();
+    this.dom = document.createElement('div');
+    document.body.appendChild(this.dom);
   });
 
   teardown(function() {
     this.sinon.restore();
+    this.dom.remove();
   });
 
   suite('sharedworker', function() {
@@ -52,11 +55,6 @@ suite('Manager', function() {
         'view-server': {
           src: '/base/test/lib/thread.js',
           type: 'worker'
-        },
-
-        'window-service': {
-          src: '/base/test/lib/moz-contacts.html',
-          type: 'window'
         }
       });
     });
@@ -106,6 +104,60 @@ suite('Manager', function() {
           assert.deepEqual(results[1], { some: 'data' });
           sinon.assert.calledOnce(window.Worker);
         }).then(done, done);
+      });
+    });
+
+    suite('outside targets /', function() {
+      var manager;
+      var client;
+
+      teardown(function() {
+        manager.destroy();
+      });
+
+      test('it connects', function(done) {
+        var iframe = document.createElement('iframe');
+        iframe.src = '/base/test/lib/moz-contacts.html';
+        this.dom.appendChild(iframe);
+
+        manager = threads.manager({
+          'moz-contacts': {
+            src: '/base/test/lib/moz-contacts.html',
+            type: 'window',
+            target: iframe
+          }
+        });
+
+        client = threads.client('moz-contacts');
+
+        client.method('get').then(contacts => {
+          assert.equal(contacts[0].firstName, 'Francisco');
+          assert.equal(contacts[1].firstName, 'Wilson');
+          assert.equal(contacts[2].firstName, 'Guillaume');
+          done();
+        });
+      });
+
+      test('it "adopts" the target thread', function(done) {
+        var iframe = document.createElement('iframe');
+        iframe.src = '/base/test/lib/moz-contacts.html';
+        this.dom.appendChild(iframe);
+
+        manager = threads.manager({
+          'moz-contacts': {
+            src: '/base/test/lib/moz-contacts.html',
+            type: 'window',
+            target: iframe
+          }
+        });
+
+        client = threads.client('moz-contacts');
+        client.connected.then(() => {
+            manager.destroy();
+            assert.isFalse(document.contains(iframe),
+              'manager destroyed the iframe');
+            done();
+          });
       });
     });
 
