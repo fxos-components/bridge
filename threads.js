@@ -1676,8 +1676,8 @@ Service.prototype.contract = function(contract) {
  * @param {*} data Payload to be transmitted.
  */
 
-Service.prototype.broadcast = function(type, data) {
-  this.private.broadcast(type, data);
+Service.prototype.broadcast = function(type, data, clients) {
+  this.private.broadcast(type, data, clients);
   return this;
 };
 
@@ -1965,11 +1965,13 @@ ServicePrivate.prototype.listen = function() {
  *
  * @param  {String} type
  * @param  {*} data to pass with the event
+ * @param  {Array} (optional) array of client-ids to target
  */
 
-ServicePrivate.prototype.broadcast = function(type, data) {
+ServicePrivate.prototype.broadcast = function(type, data, clients) {
   debug('broadcast', type, data);
   for (var client in this.channels) {
+    if (clients && !~clients.indexOf(client)) continue;
     this.messenger.push(this.channels[client], {
       type: 'broadcast',
       recipient: client,
@@ -1995,7 +1997,7 @@ function error(id) {
     4: 'method "' + args[0] + '" doesn\'t exist',
     5: 'arguments types don\'t match contract',
     6: 'stream "' + args[0] + '" doesn\'t exist',
-  });
+  }[id]);
 }
 
 },{"../messenger":7,"../thread-global":10,"../utils":11,"./stream":9}],9:[function(require,module,exports){
@@ -2476,7 +2478,7 @@ function error(id) {
   return new Error({
     1: 'Unknown connection type: "' + args[0] + '"',
     2: 'Service "' + args[0] + '"already defined'
-  });
+  }[id]);
 }
 
 /**
