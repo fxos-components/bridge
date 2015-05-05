@@ -23,7 +23,7 @@
     "watch": "npm-watch"
   },
   "watch": {
-    "bundle": "lib/*.js"
+    "bundle": "lib/**/*.js"
   },
   "repository": {
     "type": "git",
