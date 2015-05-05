@@ -13,6 +13,19 @@ suite('ChildThread', function() {
     this.dom.remove();
   });
 
+  test('It throws if the type is unknown', function() {
+    this.sinon.spy(threads, 'create');
+
+    try {
+      var thread = threads.create({
+        src: '/base/test/lib/view.html',
+        type: 'unknowntype'
+      });
+    } catch (e) {}
+
+    assert.isTrue(threads.create.getCall(0).threw());
+  });
+
   suite('target /', function() {
     test('loaded iframe', function(done) {
       var iframe = document.createElement('iframe');
