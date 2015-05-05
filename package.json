@@ -31,5 +31,12 @@
   },
   "bugs": {
     "url": "https://github.com/gaia-components/threads/issues"
+  },
+  "dependencies": {
+    "browserify": "^10.1.0",
+    "karma": "^0.12.31",
+    "karma-firefox-launcher": "^0.1.4",
+    "karma-mocha": "^0.1.10",
+    "karma-sinon-chai": "^0.3.0"
   }
 }
