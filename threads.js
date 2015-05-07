@@ -120,9 +120,12 @@ ChildThread.prototype.getService = function(name) {
  * message to the thread when we don't
  * yet know about the asked `Service`.
  *
+ * This would have to be done after 'ready'.
+ *
  * @param  {String} name
  * @return {Promise}
  */
+
 ChildThread.prototype._getService = function(name) {
   debug('get service', name);
   var service = this.services[name];
@@ -170,6 +173,7 @@ ChildThread.prototype._getService = function(name) {
  *
  * @return {Promise}
  */
+
 ChildThread.prototype.checkReady = function() {
   debug('check ready');
   var deferred = utils.deferred();
@@ -222,6 +226,7 @@ ChildThread.prototype.postMessage = function(message) {
  *
  * @private
  */
+
 ChildThread.prototype.listen = function() {
   debug('listen (%s)', this.type);
   switch(this.type) {
@@ -242,6 +247,7 @@ ChildThread.prototype.listen = function() {
  *
  * @private
  */
+
 ChildThread.prototype.unlisten = function() {
   switch(this.type) {
     case 'worker':
@@ -266,10 +272,25 @@ ChildThread.prototype.unlisten = function() {
  * @param  {Event} e
  * @private
  */
+
 ChildThread.prototype.onmessage = function(e) {
-  debug('on message', e.data.type);
+  if (!this.fromTarget(e)) return;
+  debug('on message', e.data.data);
   this.messenger.parse(e);
   this.emit('message', e);
+};
+
+/**
+ * Check if message event comes from target.
+ *
+ * @param  {Event} e
+ * @return {Boolean}
+ */
+
+ChildThread.prototype.fromTarget = function(e) {
+  return e.target === this.target
+    || this.target.contentWindow === e.source
+    || e.target === this.target.port;
 };
 
 /**
@@ -2269,6 +2290,7 @@ ThreadGlobal.prototype.listen = function() {
  */
 
 ThreadGlobal.prototype.ready = function() {
+  if (this.isRoot) return;
   debug('ready', this.id);
   this.messenger.push(this, {
     type: 'threadready',

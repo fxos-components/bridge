@@ -1,7 +1,7 @@
 /*global threads,assert,suite,setup,teardown,test,sinon*/
 /*jshint esnext:true, maxlen:false*/
 
-suite('Manager', function() {
+suite('Manager /', function() {
   var clients;
 
   setup(function() {
@@ -16,7 +16,7 @@ suite('Manager', function() {
     this.dom.remove();
   });
 
-  suite('sharedworker', function() {
+  suite('sharedworker /', function() {
     var manager;
 
     // SharedWorkers are hard to kill.
