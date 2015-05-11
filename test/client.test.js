@@ -190,4 +190,19 @@ suite('client', function() {
       });
     });
   });
+
+  suite('Exceptions', function() {
+    test('Un-clonable object', function(done) {
+      thread = threads.create({
+        src: '/base/test/lib/thread2.js',
+        type: 'worker'
+      });
+
+      client = threads.client('thread2-service', { thread: thread });
+
+      client.method('cloningError').catch(function(err) {
+        done();
+      });
+    });
+  });
 });
