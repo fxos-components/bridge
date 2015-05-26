@@ -139,4 +139,43 @@ suite('Service /', function() {
       });
     });
   });
+
+  suite('return values', function() {
+    setup(function() {
+      _threads.push(threads.create({
+        src: '/base/test/lib/thread.js',
+        type: 'worker'
+      }));
+
+      clients.push(threads.client('view-server', { thread: _threads[0] }));
+    });
+
+    test('returns false', function(done) {
+      clients[0].method('returnsFalse').then(function(value) {
+        assert.equal(value, false);
+        done();
+      }).catch(done);
+    });
+
+    test('returns undefined', function(done) {
+      clients[0].method('returnsUndefined').then(function(value) {
+        assert.equal(value, undefined);
+        done();
+      }).catch(done);
+    });
+
+    test('returns zero', function(done) {
+      clients[0].method('returnsZero').then(function(value) {
+        assert.equal(value, 0);
+        done();
+      }).catch(done);
+    });
+
+    test('returns empty string', function(done) {
+      clients[0].method('returnsEmptyString').then(function(value) {
+        assert.equal(value, '');
+        done();
+      }).catch(done);
+    });
+  });
 });
