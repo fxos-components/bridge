@@ -1836,15 +1836,7 @@ function ServicePrivate(service) {
     .handle('disconnect', this.ondisconnect, this);
 
   this.listen();
-
-  // Don't declare service ready until
-  // any pending tasks in the event-loop
-  // have completed. Namely any pending
-  // 'connect' events for `SharedWorkers`.
-  // If we broadcast the 'serviceready'
-  // event before the thread-parent has
-  // 'connected', it won't be heard.
-  setTimeout(this.ready.bind(this));
+  this.ready();
 }
 
 /**
