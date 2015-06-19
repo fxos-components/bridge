@@ -1,0 +1,12 @@
+<script src="/base/threads.js"></script>
+<script>
+/*jshint esnext:true*/
+var message = threads._message;
+
+message.receiver('message-test-2')
+  .on('forwarded-message', message => {
+    message.respond('final destination');
+  })
+  .listen();
+
+</script>

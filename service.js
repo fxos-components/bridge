@@ -1,248 +1,4 @@
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.threads = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-
-module.exports = {
-  service: require('./lib/service'),
-  client: require('./lib/client'),
-  _message: require('./lib/message')
-};
-
-},{"./lib/client":2,"./lib/message":3,"./lib/service":4}],2:[function(require,module,exports){
-'use strict';
-
-/**
- * Dependencies
- */
-
-var Emitter = require('./utils/emitter');
-var uuid = require('./utils/uuid');
-var message = require('./message');
-
-/**
- * Exports
- */
-
-module.exports = Client;
-
-/**
- * Mini Logger
- *
- * @type {Function}
- */
-
-var debug = 0 ? console.log.bind(console, '[Client]') : () => {};
-
-function Client(service, endpoint) {
-  if (!(this instanceof Client)) return new Client(service, endpoint);
-
-  this.id = uuid();
-  this.setEndpoint(endpoint);
-  this.service = service;
-  this.pending = new Set();
-
-  this.receiver = message.receiver(this.id)
-    .on('_broadcast', this.onBroadcast.bind(this));
-
-  // this._on('service:destroyed', this.onServiceDestroyed.bind(this));
-  if (!this.endpoint) throw error(1);
-  debug('initialized', this);
-}
-
-Client.prototype = Emitter({
-
-  /**
-   * Connect with the Service.
-   *
-   * @private
-   */
-  connect() {
-    if (this.connected) return this.connected;
-    debug('connecting...', this.service);
-
-    var mc = new MessageChannel();
-    this.channel = mc.port1;
-    this.channel.start();
-
-    var data = {
-      clientId: this.id,
-      service: this.service
-    };
-
-    return this.connected = this.message('_connect')
-      .set('transfer', [mc.port2])
-      .set('data', data)
-      .listen(mc.port1)
-      .send()
-      .then(response => {
-        debug('connected', response);
-
-        // Check if the response came back on
-        // the MessageChannel. If it did then
-        // update the endpoint so that all
-        // subsequent messaging uses this channel.
-        var usingChannel = response.event.target === this.channel;
-        if (usingChannel) this.setEndpoint(this.channel);
-        else {
-          this.channel.close();
-          delete this.channel;
-        }
-
-        // Begin listening so that Clients can respond
-        // to push style messages like .broadcast().
-        this.receiver.listen(this.endpoint);
-      });
-  },
-
-  /**
-   * Disconnect from the `Service`
-   *
-   * @public
-   */
-  disconnect(options) {
-    if (!this.connected) return Promise.resolve();
-    debug('disconnecting ...');
-
-    var config = {
-      noRespond: options && options.noRespond,
-      data: this.id
-    };
-
-    this.cancelPending();
-
-    return this.message('_disconnect')
-      .set(config)
-      .send()
-      .then(() => this.onDisconnected());
-  },
-
-  method(method) {
-    var args = [].slice.call(arguments, 1);
-
-    return this.connect()
-      .then(() => {
-        debug('method', method);
-        return this.message('_method', '[Client]')
-          .set({
-            recipient: this.service,
-            data: {
-              name: method,
-              args: args
-            }
-          })
-          .send();
-      })
-      .then(response => response.value);
-  },
-
-  plugin(fn) {
-    fn(this, {
-      message: message,
-      Emitter: Emitter,
-      uuid: uuid
-    });
-
-    return this;
-  },
-
-  message(type) {
-    var msg = message(type)
-      .set('endpoint', this.endpoint)
-      .on('response', () => this.pending.delete(msg))
-      .on('cancel', () => this.pending.delete(msg));
-
-    this.pending.add(msg);
-    return msg;
-  },
-
-  cancelPending() {
-    debug('cancel pending');
-    this.pending.forEach(msg => { msg.cancel();});
-    this.pending.clear();
-  },
-
-  pendingResponded() {
-    var responded = [];
-    this.pending.forEach(msg => responded.push(msg.responded));
-    return Promise.all(responded);
-  },
-
-  onBroadcast(message) {
-    debug('on broadcast', message.data);
-    this.emit(message.data.type, message.data.data);
-  },
-
-  // onServiceDestroyed() {
-  //   debug('service destroyed');
-  //   this.onDisconnected();
-  // },
-
-  onDisconnected() {
-    delete this.connected;
-    this.pendingResponded().then(() => {
-      debug('disconnected');
-      if (this.channel) this.channel.close();
-      this.emit('disconnected');
-    });
-  },
-
-  setEndpoint(endpoint) {
-    debug('set endpoint');
-    if (endpoint) this.endpoint = message.endpoint.create(endpoint);
-    return this;
-  },
-
-  destroy() {
-    return this.disconnect()
-      .then(() => {
-        if (this.destroyed) return;
-        debug('destroy');
-        this.destroyed = true;
-        this.receiver.destroy();
-        this._off();
-      });
-  },
-
-  _on: Emitter.prototype.on,
-  _off: Emitter.prototype.off,
-});
-
-Client.prototype.on = function(name, fn) {
-  this.connect().then(() => {
-    debug('bind on', name);
-    Emitter.prototype.on.call(this, name, fn);
-    this.message('_on')
-      .set('noRespond', true)
-      .set('data', {
-        name: name,
-        clientId: this.id
-      })
-      .send(this.endpoint);
-  });
-
-  return this;
-};
-
-Client.prototype.off = function(name, fn) {
-  this.connect().then(() => {
-    Emitter.prototype.off.call(this, name, fn);
-    this.message('_off')
-      .set('noRespond', true)
-      .set('data', {
-        name: name,
-        clientId: this.id
-      })
-      .send(this.endpoint);
-  });
-
-  return this;
-};
-
-function error(id) {
-  return new Error({
-    1: 'an endpoint must be defined'
-  }[id]);
-}
-
-},{"./message":3,"./utils/emitter":5,"./utils/uuid":6}],3:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.service = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
 /**
@@ -721,7 +477,7 @@ function error(id) {
 function on(target, name, fn) { target.addEventListener(name, fn); }
 function off(target, name, fn) { target.removeEventListener(name, fn); }
 
-},{"./utils/emitter":5,"./utils/uuid":6}],4:[function(require,module,exports){
+},{"./utils/emitter":3,"./utils/uuid":4}],2:[function(require,module,exports){
 'use strict';
 
 /**
@@ -921,7 +677,7 @@ function error(id) {
   }[id]);
 }
 
-},{"./message":3,"./utils/uuid":6}],5:[function(require,module,exports){
+},{"./message":1,"./utils/uuid":4}],3:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1020,7 +776,7 @@ Emitter.prototype = {
   }
 };
 
-},{}],6:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1046,5 +802,5 @@ module.exports = (function() {
   };
 })();
 
-},{}]},{},[1])(1)
+},{}]},{},[2])(2)
 });
