@@ -1,4 +1,5 @@
 {
+  "esnext": true,
   "globals": {
     "define": false,
     "BroadcastChannel": false,
