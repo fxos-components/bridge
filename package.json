@@ -1,10 +1,9 @@
 {
   "name": "threads",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "homepage": "https://github.com/gaia-components/threads",
   "license": "MIT",
   "main": "threads.js",
-
   "scripts": {
     "test": "./node_modules/karma/bin/karma start test/karma.conf.js --single-run",
     "test-dev": "./node_modules/karma/bin/karma start test/karma.conf.js",
@@ -19,16 +18,13 @@
     "watch-client": "watchify lib/client.js -s client -o client.js",
     "watch-service": "watchify lib/service.js -s service -o service.js"
   },
-
   "repository": {
     "type": "git",
     "url": "git://github.com/gaia-components/threads.git"
   },
-
   "bugs": {
     "url": "https://github.com/gaia-components/threads/issues"
   },
-
   "dependencies": {
     "browserify": "^10.1.0",
     "karma": "^0.12.31",
@@ -36,7 +32,6 @@
     "karma-mocha": "^0.1.10",
     "karma-sinon-chai": "^0.3.0"
   },
-
   "devDependencies": {
     "browserify": "^9.0.8",
     "closurecompiler": "^1.5.2",
