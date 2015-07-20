@@ -78,7 +78,7 @@ suite('end-to-end', function() {
     });
   });
 
-  suite('endpoint', () => {
+  suite('endpoint >>', () => {
     test('it works when an endpoint being set on the prototype', done => {
       worker = createEndpoint('service-test-1-worker.js', 'worker');
       client.prototype.endpoint = worker;
@@ -90,7 +90,7 @@ suite('end-to-end', function() {
     });
   });
 
-  suite('transport types', function() {
+  suite('transport types >>', function() {
     test('it uses MessageChannel on the response', function(done) {
       worker = createEndpoint('service-test-1-worker.js', 'worker');
       var myClient = createClient('service-1', worker);
@@ -250,7 +250,7 @@ suite('end-to-end', function() {
     catch (e) { done(); }
   });
 
-  suite('streams', function() {
+  suite('streams >>', function() {
     var myClient;
 
     setup(function() {
@@ -380,6 +380,20 @@ suite('end-to-end', function() {
     });
   });
 
+  suite('BroadcastChannel >>', function() {
+    test('can be used', function(done) {
+      createEndpoint('service-test-1-window.html', 'window');
+
+      var bc = new BroadcastChannel('bc-service-channel');
+      var myClient = createClient('bc-service', bc);
+
+      myClient.method('ping').then(result => {
+        assert.equal(result, 'pong');
+        done();
+      });
+    });
+  });
+
   /**
    * Utils
    */
@@ -402,6 +416,15 @@ suite('end-to-end', function() {
   function destroyClients() {
     return Promise.all(clients.map(client => client.destroy()))
       .then(() => clients = []);
+  }
+
+  function deferred() {
+    var promise = {};
+    promise.promise = new Promise((resolve, reject) => {
+      promise.resolve = resolve;
+      promise.reject = reject;
+    });
+    return promise;
   }
 
   function createService(name) {
@@ -439,14 +462,5 @@ suite('end-to-end', function() {
       }
     });
     endpoints = [];
-  }
-
-  function deferred() {
-    var promise = {};
-    promise.promise = new Promise((resolve, reject) => {
-      promise.resolve = resolve;
-      promise.reject = reject;
-    });
-    return promise;
   }
 });

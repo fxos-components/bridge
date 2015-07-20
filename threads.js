@@ -29,7 +29,16 @@ module.exports = Client;
  * @type {Function}
  */
 
-var debug = 0 ? console.log.bind(console, '[Client]') : () => {};
+var debug = 0 ? function(arg1, ...args) {
+  var type = `[${self.constructor.name}][${location.pathname}]`;
+  console.log(`[Client]${type} - "${arg1}"`, ...args);
+} : () => {};
+
+/**
+ * Initialize a new `Client`
+ *
+ * @param {String} type
+ */
 
 function Client(service, endpoint) {
   if (!(this instanceof Client)) return new Client(service, endpoint);
@@ -44,7 +53,7 @@ function Client(service, endpoint) {
 
   // this._on('service:destroyed', this.onServiceDestroyed.bind(this));
   if (!this.endpoint) throw error(1);
-  debug('initialized', this);
+  debug('initialized', service);
 }
 
 Client.prototype = Emitter({
@@ -55,6 +64,7 @@ Client.prototype = Emitter({
    * @private
    */
   connect() {
+    debug('connect');
     if (this.connected) return this.connected;
     debug('connecting...', this.service);
 
@@ -144,6 +154,7 @@ Client.prototype = Emitter({
   },
 
   message(type) {
+    debug('create message', type);
     var msg = message(type)
       .set('endpoint', this.endpoint)
       .on('response', () => this.pending.delete(msg))
@@ -268,7 +279,16 @@ exports.Message = Message;
  * @type {Function}
  */
 
-var debug = 0 ? console.log.bind(console, '[Message]') : () => {};
+ var debug = 0 ? function(arg1, ...args) {
+   var type = `[${self.constructor.name}][${location.pathname}]`;
+   console.log(`[Message]${type} - "${arg1}"`, ...args);
+ } : () => {};
+
+/**
+ * Initialize a new `Message`
+ *
+ * @param {String} type
+ */
 
 function Message(type) {
   this.cancelled = false;
@@ -279,6 +299,12 @@ function Message(type) {
   if (typeof type === 'object') this.setupInbound(type);
   else this.setupOutbound(type);
 }
+
+/**
+ * Mixin `Emitter`
+ *
+ * @type {Object}
+ */
 
 Message.prototype = Emitter({
   timeout: 1000,
@@ -334,7 +360,7 @@ Message.prototype = Emitter({
   },
 
   send(endpoint) {
-    debug('send');
+    debug('send', this.type);
     if (this.sent) throw error(1);
     var serialized = this.serialize();
     var expectsResponse = !this.noRespond;
@@ -487,7 +513,9 @@ Message.prototype = Emitter({
 });
 
 /**
- * Receiver
+ * Initialize a new `Reciever`.
+ *
+ * @param {String} name - corresponds to `Message.recipient`
  */
 
 function Receiver(name) {
@@ -498,6 +526,12 @@ function Receiver(name) {
   this.unlisten = this.unlisten.bind(this);
   debug('receiver initialized', name);
 }
+
+/**
+ * Mixin `Emitter`
+ *
+ * @type {Object}
+ */
 
 Receiver.prototype = Emitter({
   listen(thing) {
@@ -585,13 +619,26 @@ var adaptors = {
     ready = ready ? Promise.resolve() : checkReady();
 
     function checkReady() {
+      debug('BroadcastChannel: check Ready');
       var promise = deferred();
+
+      // Tell the other end we're ready
+      // NOTE: it may not be listening yet
       target.postMessage('ready');
+
+      // Listen for a 'ready' message once
       on(target, MSG, function fn(e) {
         if (e.data != 'ready') return;
         off(target, MSG, fn);
+
+        // Now tell the other end we're
+        // ready again just in case it
+        // wasn't listening the first time
+        target.postMessage('ready');
+        debug('BroadcastChannel: ready');
         promise.resolve();
       });
+
       return promise.promise;
     }
 
@@ -744,7 +791,10 @@ module.exports.Service = Service;
  * @type {Function}
  */
 
-var debug = 0 ? console.log.bind(console, '[Service]') : function(){};
+var debug = 0 ? function(arg1, ...args) {
+  var type = `[${self.constructor.name}][${location.pathname}]`;
+  console.log(`[Service]${type} - "${arg1}"`, ...args);
+} : () => {};
 
 /**
  * Extends `Receiver`
@@ -814,7 +864,8 @@ proto.onConnect = function(message) {
 
   // If the transport used support 'transfer' then
   // a MessageChannel port will have been sent.
-  var channel = message.event.ports[0];
+  var ports = message.event.ports;
+  var channel = ports && ports[0];
 
   // If the 'connect' message came with
   // a channel, update the source port

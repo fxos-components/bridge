@@ -67,3 +67,11 @@ threads.service('test-streams')
   })
 
   .listen();
+
+threads.service('bc-service')
+  .method('ping', arg => {
+    return 'pong';
+  })
+
+  .listen(new BroadcastChannel('bc-service-channel'));
+

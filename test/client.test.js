@@ -2,33 +2,52 @@
 /*jshint esnext:true, maxlen:false*/
 
 suite('Client()', function() {
-  var client = threads.client;
+  var Message = threads._message.Message;
   var message = threads._message;
+  var client = threads.client;
   var myClient;
+  var msg;
 
   setup(function() {
     this.sinon = sinon.sandbox.create();
     this.endpoint = sinon.createStubInstance(message.endpoint);
+
+    this.sinon.stub(client.prototype, 'message', type => {
+      Message.prototype.send.restore();
+
+      msg = sinon.createStubInstance(Message);
+      var df = deferred();
+      var response = {};
+
+      msg.send.returns(df.promise);
+      msg.listen.returns(msg);
+      msg.set.returns(msg);
+
+      df.resolve(response);
+      return msg;
+    });
+
     this.sinon.spy(client.prototype, 'connect');
-    this.sinon.spy(message.Message.prototype, 'send');
+    this.sinon.spy(Message.prototype, 'send');
   });
 
   teardown(function() {
     this.sinon.restore();
-    myClient.destroy();
+    if (myClient) myClient.destroy();
+  });
+
+  suite('Client#connect()', function() {
+    test('it attaches MessageChannel port to the messsage', function() {
+      myClient = client('some-service', this.endpoint);
+      myClient.connect();
+      var args = msg.set.withArgs('transfer').args[0];
+      assert.ok(args[1][0] instanceof MessagePort);
+    });
   });
 
   suite('Client#method()', function() {
     var fakeMessage;
     var myService;
-
-    setup(function() {
-
-    });
-
-    teardown(function() {
-
-    });
 
     test('calling method triggers a connect', function() {
       myClient = client('some-service', this.endpoint);
@@ -37,7 +56,7 @@ suite('Client()', function() {
       sinon.assert.called(myClient.connect);
     });
 
-    test('it does not send message until connected', function() {
+    test.skip('it does not send message until connected', function() {
       myClient = client('some-service', this.endpoint);
       myClient.method('someMethod1');
       sinon.assert.called(this.endpoint.postMessage);
@@ -57,6 +76,8 @@ suite('Client()', function() {
     });
 
     test('it cancels pending methods', function(done) {
+      client.prototype.message.restore();
+
       myClient = client('some-service', this.endpoint);
 
       // HACK connected
@@ -71,7 +92,7 @@ suite('Client()', function() {
         myClient.disconnect();
         assert.equal(myClient.pending.size, 1);
         done();
-      });
+      }).catch(done);
     });
 
     test('returns resolved promise if not connected', function(done) {
@@ -84,4 +105,15 @@ suite('Client()', function() {
         }).catch(done);
     });
   });
+
+
+  function deferred() {
+    var promise = {};
+    promise.promise = new Promise((resolve, reject) => {
+      promise.resolve = resolve;
+      promise.reject = reject;
+    });
+    return promise;
+  }
+
 });
