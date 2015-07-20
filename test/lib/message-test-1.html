@@ -60,16 +60,19 @@ message.receiver('receiver-2')
 
   .listen();
 
-// *
-//  * BroadcastChannel
+/**
+ * BroadcastChannel
+ */
 
-
-message.receiver('bc')
+message.receiver('bc-reciever')
   .on('ping', message => {
     message.respond('pong');
   })
 
-  .listen(new BroadcastChannel('test'));
+  .listen(new BroadcastChannel('send-test'));
 
+
+message('ping')
+  .send(new BroadcastChannel('receive-test'));
 
 </script>

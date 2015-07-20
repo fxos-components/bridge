@@ -158,7 +158,7 @@ suite('Message', function() {
       var receiver;
 
       setup(function() {
-        receiver = createReciever('im-internal')
+        receiver = createReceiver('im-internal')
           .on('ping', message => message.respond('pong'))
           .listen(window);
       });
@@ -185,7 +185,7 @@ suite('Message', function() {
       });
 
       test('messages can be forwarded to other endpoints', function(done) {
-        receiver = createReciever('im-internal')
+        receiver = createReceiver('im-internal')
           .on('forwarded-message', message => message.forward(iframe))
           .listen();
 
@@ -200,7 +200,7 @@ suite('Message', function() {
       });
 
       test('only the origin Message rejects on response timeout', function(done) {
-        receiver = createReciever('im-internal')
+        receiver = createReceiver('im-internal')
           .on('does-not-respond', message => {
             message
               .set('timeout', 300)
@@ -221,7 +221,7 @@ suite('Message', function() {
       });
 
       test('ports must be passed the entire message chain', function(done) {
-        receiver = createReciever('im-internal')
+        receiver = createReceiver('im-internal')
           .on('transfer-test-1', message => {
             message.forward(iframe); })
           .listen();
@@ -242,21 +242,30 @@ suite('Message', function() {
     suite('BroadcastChannel', function() {
       var bc;
 
-      setup(function() {
-        bc = new BroadcastChannel('test');
-      });
-
       teardown(function() {
         bc.close();
       });
 
-      test('it can be used', function(done) {
+      test('it can send messages', function(done) {
+        bc = new BroadcastChannel('send-test');
+
         message('ping')
           .send(bc)
           .then(response => {
             assert.equal(response.value, 'pong');
             done();
           });
+      });
+
+      test('it can recieve messages', function(done) {
+        bc = new BroadcastChannel('receive-test');
+
+        createReceiver('bc')
+          .on('ping', message => {
+            message.respond('pong');
+            done();
+          })
+          .listen(bc);
       });
     });
   });
@@ -270,7 +279,7 @@ suite('Message', function() {
       var proto = message.Message.prototype;
       var spy = sinon.spy();
 
-      createReciever('foo')
+      createReceiver('foo')
         .on('message-type', message => message.respond())
         .on('message-type', message => message.respond())
         .listen();
@@ -295,7 +304,7 @@ suite('Message', function() {
 
   suite('Message#preventDefault()', function() {
     test('on \'message\' event it blocks all callbacks', () => {
-      var receiver = createReciever('foo');
+      var receiver = createReceiver('foo');
       var spy = sinon.spy();
       var msg1 = {
         id: 123,
@@ -347,7 +356,7 @@ suite('Message', function() {
         sinon.spy()
       ];
 
-      createReciever('bar')
+      createReceiver('bar')
         .on('message-type', spys[0])
         .on('message-type', spys[1])
         .listen();
@@ -365,7 +374,7 @@ suite('Message', function() {
     test('it only processes message with an id', function() {
       var spy = sinon.spy();
 
-      createReciever('bar')
+      createReceiver('bar')
         .on('message-type', spy)
         .listen();
 
@@ -388,7 +397,7 @@ suite('Message', function() {
     test('it only processes message with a type', function() {
       var spy = sinon.spy();
 
-      createReciever('bar')
+      createReceiver('bar')
         .on('message-type', spy)
         .listen();
 
@@ -459,7 +468,7 @@ suite('Message', function() {
     });
   });
 
-  function createReciever(name) {
+  function createReceiver(name) {
     var receiver = message.receiver(name);
     receivers.push(receiver);
     return receiver;
