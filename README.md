@@ -139,7 +139,8 @@ var worker = new Worker('real-service.js');
 service('*')
   .on('message', message => {
     message.forward(worker);
-  });
+  })
+  .listen();
 ```
 
 In most cases this hopping proceedure will only be required during the 'connect' phase. After which, all messages are sent directly via `MessageChannel`.
