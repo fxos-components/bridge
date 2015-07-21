@@ -1,0 +1,419 @@
+
+html {
+  height: 100%;
+  overflow: auto;
+  background-color: #fff;
+  font-size: 18px;
+  font-weight: 300;
+}
+
+body {
+  position: relative;
+  min-height: 100%;
+  font-family: 'Fira Sans', sans-serif;
+  line-height: 1.4;
+  color: #555;
+  background-color: white;
+  margin: 0;
+}
+
+/**
+ * Links
+ */
+
+a {
+  color: inherit;
+  text-decoration: none;
+  color: #E98C25;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+tt,
+code,
+kbd,
+samp {
+  font-family: Consolas, Monaco, 'Andale Mono', monospace;
+}
+
+ul,
+ol { padding-left: 1em; }
+
+/**
+ * Wrap event header content in ''
+ */
+
+[id^=event]:before { content: "'" }
+[id^=event]:after { content: "'" }
+
+pre { margin: 1rem 0 }
+
+.class-description {
+  font-size: 130%;
+  line-height: 140%;
+  margin-bottom: 1em;
+  margin-top: 1em;
+}
+
+.class-description:empty {
+  margin: 0;
+}
+
+.block:not(:last-child),
+.sub-section:not(:last-child) {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: solid 1px #F4F4F4;
+}
+
+#main {
+  margin: 0 auto;
+  padding: 2.2rem;
+  padding-bottom: 8rem;
+  max-width: 700px;
+}
+
+article {
+  /*max-width: 700px;*/
+}
+
+article dl {
+  margin: 1.33em 0;
+}
+
+section {
+  display: block;
+  background-color: #fff;
+}
+
+.variation {
+  display: none;
+}
+
+.signature-attributes {
+  font-size: 60%;
+  color: #aaa;
+  font-style: italic;
+  font-weight: lighter;
+}
+
+/**
+ * Navigation
+ */
+
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  z-index: 1;
+
+  display: block;
+  box-sizing: border-box;
+  padding: 2.2rem;
+  font-size: 17px;
+}
+
+nav h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+nav h2 a {
+  /*color: white;*/
+  letter-spacing: 0.5px;
+  /*font-weight: 500;*/
+}
+
+nav h2 a:hover {
+  text-decoration: none;
+  text-shadow: none;
+
+  text-shadow:
+    1px 1px 12.3px rgba(0, 0, 0, 0.1),
+    /*0px 0.5px 1px rgba(0, 0, 0, 0.5),*/
+    0px -0.5px 0 rgba(0, 0, 0, 0.05);
+}
+
+nav h3 {
+  font-size: 1.33em;
+}
+
+nav ul {
+  padding: 0;
+  margin: 0;
+  list-style-type: none;
+}
+
+nav li {
+  color: #111;
+  font-size: 0.9em;
+  font-weight: 300;
+  font-style: italic;
+  margin-bottom: 0.2em;
+}
+
+nav li a {
+  position: relative;
+}
+
+nav li a.active:before {
+  position: absolute;
+  left: -1em;
+  content: '>';
+  font-style: normal;
+  color: #444;
+}
+
+footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  padding: 1rem;
+  font-style: italic;
+  font-size: 0.6em;
+  opacity: 0.7;
+  text-align: center;
+}
+
+blockquote {
+  margin: 1.33rem 0;
+  padding: 0px 15px;
+  color: #777;
+  border-left: 4px solid #DDD;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 200;
+  font-style: italic;
+  line-height: 1.2em;
+  margin: 1.7rem 0 1rem;
+  color: #111;
+}
+
+table {
+  font-size: 0.8em;
+}
+
+th {
+  font-weight: 300;
+}
+
+body h1:first-child,
+body h2:first-child,
+body h3:first-child,
+body h4:first-child,
+body h5:first-child,
+body h6:first-child {
+  margin-top: -0.1em;
+}
+
+h1:empty { display: none; }
+
+h1 {
+  font-size: 54px;
+  color: #333;
+}
+h2 { font-size: 42px; }
+h3 { font-size: 36px; }
+h4 { font-size: 24px; }
+h5 { font-size: 24px; }
+
+p {
+  margin: 1.33em 0;
+}
+
+.ancestors { color: #999; }
+.ancestors a {
+  color: #999 !important;
+  text-decoration: none;
+}
+
+.clear {
+  clear: both;
+}
+
+.important {
+  font-weight: bold;
+  color: #950B02;
+}
+
+.yes-def {
+  text-indent: -1000px;
+}
+
+.type-signature {
+  color: #aaa;
+}
+
+.name,
+.signature {
+  font-family: Consolas, Monaco, 'Andale Mono', monospace;
+  font-style: normal;
+}
+
+.jsdoc-hidden {
+  display: none;
+}
+
+dl {
+  margin: 1.33rem 0;
+  border-left: 2px solid #DDD;
+}
+
+dl dt {
+  float: left;
+  padding: 0 0.6em;
+}
+
+dl dd,
+dl ul {
+  margin: 0;
+}
+
+dl ul { list-style-type: none; }
+dl li { margin-left: 30px; }
+dl pre.prettyprint { margin: 0 }
+dl .object-value { padding-top: 0; }
+
+.description {
+  margin-bottom: 1em;
+  margin-top: 1em;
+}
+
+.code-caption
+{
+  font-style: italic;
+  font-size: 107%;
+  margin: 0;
+}
+
+.prettyprint {
+  overflow: auto;
+}
+
+.prettyprint.source {
+  width: inherit;
+}
+
+code {
+  display: inline-block;
+  padding: 0 0.3em;
+  font-size: 0.8em;
+  line-height: 1.5em;
+  color: #4D4E53;
+  background: #F7F7F7;
+}
+
+.prettyprint code {
+  display: block;
+  padding: 0.8em 1em;
+  margin: 0;
+
+  font-size: 0.8em;
+  line-height: 1.5em;
+  color: #4D4E53;
+  background: #F7F7F7;
+}
+
+.prettyprint code span.line {
+  display: inline-block;
+}
+
+.prettyprint.linenums
+{
+  padding-left: 70px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.prettyprint.linenums ol
+{
+  padding-left: 0;
+}
+
+.prettyprint.linenums li
+{
+  border-left: 3px #ddd solid;
+}
+
+.prettyprint.linenums li.selected,
+.prettyprint.linenums li.selected *
+{
+  background-color: lightyellow;
+}
+
+.prettyprint.linenums li *
+{
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+.params, .props
+{
+  border-spacing: 0;
+  border: 0;
+  border-collapse: collapse;
+}
+
+.params .name, .props .name, .name code {
+  color: #4D4E53;
+  font-family: Consolas, Monaco, 'Andale Mono', monospace;
+  font-size: 100%;
+}
+
+.params td, .params th, .props td, .props th
+{
+  border: 1px solid #ddd;
+  margin: 0px;
+  text-align: left;
+  vertical-align: top;
+  padding: 4px 6px;
+  display: table-cell;
+}
+
+.params thead tr,
+.props thead tr {
+  background-color: #ddd;
+}
+
+.params .params thead tr,
+.props .props thead tr {
+  background-color: #fff;
+}
+
+.params th, .props th { border-right: 1px solid #aaa; }
+.params thead .last, .props thead .last { border-right: 1px solid #ddd; }
+
+.params td.description > p:first-child,
+.props td.description > p:first-child
+{
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.params td.description > p:last-child,
+.props td.description > p:last-child
+{
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.disabled {
+  color: #454545;
+}

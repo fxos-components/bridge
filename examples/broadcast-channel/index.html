@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>examples/broadcast-channel</title>
+  <script src="../../service.js"></script>
+</head>
+<body>
+<iframe src="iframe-service.html"></iframe>
+<ul></ul>
+<script>
+  var list = document.querySelector('ul');
+  new SharedWorker('shared-worker-client.js');
+
+  service('logger')
+    .listen(new BroadcastChannel('logger-service-channel'))
+    .method('log', text => {
+      var item = document.createElement('li');
+      item.textContent = text;
+      list.appendChild(item);
+    });
+
+  if (location.protocol === 'file:') {
+    alert('Demo does not work on file:// protocol. Use a local web-server.');
+  }
+</script>
+</body>
+</html>

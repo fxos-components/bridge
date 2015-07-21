@@ -1,0 +1,8 @@
+<script src="../../service.js"></script>
+<script>
+  var worker = new Worker('worker-service.js');
+
+  service('*')
+    .on('message', message => message.forward(worker))
+    .listen();
+</script>

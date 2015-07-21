@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>examples/forwarding-messages</title>
+  <script src="../../client.js"></script>
+</head>
+<body>
+<iframe src="iframe-service.html"></iframe>
+<ul></ul>
+<script>
+  var iframe = document.querySelector('iframe');
+  var myClient = client('my-service', iframe);
+
+  myClient.method('ping').then(result => {
+    log(result);
+  });
+
+  function log(text) {
+    var list = document.querySelector('ul');
+    var item = document.createElement('li');
+    item.textContent = text;
+    list.appendChild(item);
+  }
+</script>
+</body>
+</html>

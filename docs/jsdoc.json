@@ -1,0 +1,22 @@
+{
+  "source": {
+    "include": [
+      "lib-es5/client.js",
+      "lib-es5/service.js",
+      "lib-es5/message.js",
+      "lib-es5/utils/emitter.js"
+    ]
+  },
+  "opts": {
+    "name": "threads.js",
+    "readme": "README.md",
+    "tutorials": "docs/tutorials",
+    "destination": "docs/out",
+    "template": "docs/template"
+  },
+  "templates": {
+    "default": {
+      "outputSourceFiles": false
+    }
+  }
+}
