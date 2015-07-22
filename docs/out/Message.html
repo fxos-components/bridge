@@ -25,7 +25,7 @@
 <header>
     
         <h2>
-        Receiver
+        Message
         </h2>
         
     
@@ -39,14 +39,14 @@
 
     
 
-    <h4 class="name" id="Receiver"><span class="type-signature"></span>new Receiver<span class="signature">(name)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="Message"><span class="type-signature"></span>new Message<span class="signature">(type)</span><span class="type-signature"></span></h4>
 
     
 
 
 
 <div class="description">
-    Initialize a new `Reciever`.
+    Initialize a new `Message`
 </div>
 
 
@@ -83,7 +83,7 @@
 
         <tr>
             
-                <td class="name"><code>name</code></td>
+                <td class="name"><code>type</code></td>
             
 
             <td class="type">
@@ -99,7 +99,7 @@
 
             
 
-            <td class="description last">corresponds to `Message.recipient`</td>
+            <td class="description last">Message type</td>
         </tr>
 
     
@@ -167,18 +167,6 @@
     </div>
 
     
-        <div class="sub-section">
-            <h3 class="subsection-title">Extends</h3>
-            
-
-
-    <ul>
-        <li><a href="Emitter.html">Emitter</a></li>
-    </ul>
-
-
-        </div>
-    
 
     
 
@@ -200,28 +188,17 @@
 
     
 
-    <h4 class="name" id="listen"><span class="type-signature"></span>listen<span class="signature">(endpoint<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="respond"><span class="type-signature"></span>respond<span class="signature">(result<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
 
     
 
 
 
 <div class="description">
-    Begin listening for inbound messages.
+    Respond to a message.
 </div>
 
 
-
-
-    
-    <pre class="prettyprint"><code>// When no arguments are given
-// messages will be listened for
-// on the default global scope
-.listen();
-
-// When an endpoint is out of reach
-// BroadcastChannel can be used.
-.listen(new BroadcastChannel('foo'));</code></pre>
 
 
 
@@ -257,28 +234,13 @@
 
         <tr>
             
-                <td class="name"><code>endpoint</code></td>
+                <td class="name"><code>result</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">HTMLIframeElement</span>
-|
-
-<span class="param-type">Worker</span>
-|
-
-<span class="param-type">MessagePort</span>
-|
-
-<span class="param-type">BroadcastChannel</span>
-|
-
-<span class="param-type">Window</span>
-|
-
-<span class="param-type">Object</span>
+<span class="param-type">*</span>
 
 
             
@@ -368,15 +330,19 @@
 
     
 
-    <h4 class="name" id="unlisten"><span class="type-signature"></span>unlisten<span class="signature">(endpoint<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="forward"><span class="type-signature"></span>forward<span class="signature">(endpoint)</span><span class="type-signature"></span></h4>
 
     
 
 
 
 <div class="description">
-    Stop listening for inbound messages
-on all endpoints listened to prior.
+    Forward a `Message` onto another endpoint.
+
+The `silentTrue` option prevents the
+message request timing out should
+the response come back via an
+alternative route.
 </div>
 
 
@@ -401,8 +367,6 @@ on all endpoints listened to prior.
         <th>Type</th>
 
         
-        <th>Attributes</th>
-        
 
         
 
@@ -424,34 +388,15 @@ on all endpoints listened to prior.
 <span class="param-type">HTMLIframeElement</span>
 |
 
-<span class="param-type">Worker</span>
-|
-
-<span class="param-type">SharedWorker</span>
-|
-
-<span class="param-type">BroadcastChannel</span>
+<span class="param-type">MessagePort</span>
 |
 
 <span class="param-type">Window</span>
-|
-
-<span class="param-type">Object</span>
 
 
             
             </td>
 
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
             
 
             
@@ -631,11 +576,6 @@ It is possible to subscript to * events.
 
     
 
-    
-    <dt class="inherited-from">Inherited From:</dt>
-    <dd class="inherited-from"><ul class="dummy"><li>
-        <a href="Emitter.html#on">Emitter#on</a>
-    </li></ul></dd>
     
 
     
@@ -840,11 +780,6 @@ emitter.off(); // remove all callbacks</code></pre>
     
 
     
-    <dt class="inherited-from">Inherited From:</dt>
-    <dd class="inherited-from"><ul class="dummy"><li>
-        <a href="Emitter.html#off">Emitter#off</a>
-    </li></ul></dd>
-    
 
     
 
@@ -1044,11 +979,6 @@ emitter.off(); // remove all callbacks</code></pre>
     
 
     
-    <dt class="inherited-from">Inherited From:</dt>
-    <dd class="inherited-from"><ul class="dummy"><li>
-        <a href="Emitter.html#emit">Emitter#emit</a>
-    </li></ul></dd>
-    
 
     
 
@@ -1131,7 +1061,7 @@ emitter.off(); // remove all callbacks</code></pre>
 </div>
 <nav><h2><a href="index.html">threads.js</a></h2><h3>Classes</h3><ul><li><a href="Client.html">Client</a></li><li><a href="Service.html">Service</a></li><li><a href="Message.html">Message</a></li><li><a href="Receiver.html">Receiver</a></li><li><a href="Emitter.html">Emitter</a></li></ul><h3>Tutorials</h3><ul><li><a href="tutorial-BroadcastChannel.html">BroadcastChannel</a></li><li><a href="tutorial-Forwarding messages.html">Forwarding messages</a></li><li><a href="tutorial-How it works.html">How it works</a></li><li><a href="tutorial-Plugin_ Streams.html">Plugin: Streams</a></li><li><a href="tutorial-What_s an endpoint_.html">What's an endpoint?</a></li><li><a href="tutorial-Writing plugins.html">Writing plugins</a></li></ul></nav>
 <footer>
-  Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0-dev</a> on Wed Jul 22 2015 16:37:16 GMT+0100 (BST)
+  Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0-dev</a> on Wed Jul 22 2015 16:37:15 GMT+0100 (BST)
 </footer>
 <a href="https://github.com/gaia-components/threads"><img style="position: fixed; top: 0; right: 0; border: 0; width: 130px; height: 130px;" src="https://aral.github.com/fork-me-on-github-retina-ribbons/right-orange@2x.png" alt="Fork me on GitHub"></a>
 <script> window.prettyPrint(); </script>

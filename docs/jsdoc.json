@@ -7,6 +7,7 @@
       "lib-es5/utils/emitter.js"
     ]
   },
+  "repo": "https://github.com/gaia-components/threads",
   "opts": {
     "name": "threads.js",
     "readme": "README.md",
