@@ -21,14 +21,11 @@ client.method('greet', 'john').then(value => {
 });
 ```
 
-## Installation
+## Install options
 
-```bash
-$ npm install gaia-components/threads
-```
-```bash
-$ bower install gaia-components/threads
-```
+A. `$ npm install gaia-components/threads`<br/>
+B. `$ bower install gaia-components/threads`<br/>
+C. [Copy/paste](https://raw.githubusercontent.com/gaia-components/threads/master/threads.js)
 
 ## Usage
 
