@@ -12,6 +12,7 @@
   new SharedWorker('shared-worker-client.js');
 
   threads.service('logger')
+    .listen()
     .listen(new BroadcastChannel('logger-service-channel'))
     .method('log', text => {
       var item = document.createElement('li');

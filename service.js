@@ -402,7 +402,7 @@ var adaptors = {
   },
 
   BroadcastChannel(target, options) {
-    debug('BroadcastChannel');
+    debug('BroadcastChannel', target.name);
     var ready = options && options.ready;
     ready = ready ? Promise.resolve() : checkReady();
 

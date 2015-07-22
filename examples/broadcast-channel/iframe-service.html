@@ -1,8 +1,7 @@
 <script src="../../threads.js"></script>
 <script>
-  var loggerChannel = new BroadcastChannel('logger-service-channel');
   var myServiceChannel = new BroadcastChannel('my-service-channel');
-  var logger = threads.client('logger', loggerChannel);
+  var logger = threads.client('logger', window.parent);
 
   threads.service('my-service')
     .listen(myServiceChannel)
