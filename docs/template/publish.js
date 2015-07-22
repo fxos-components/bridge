@@ -576,7 +576,7 @@ exports.publish = function(taffyData, opts, tutorials) {
     var files = find({kind: 'file'}),
         packages = find({kind: 'package'});
 
-    generate('',
+    generate(opts.name || 'Home',
         packages.concat(
             [{kind: 'mainpage', readme: opts.readme, longname: (opts.mainpagetitle) ? opts.mainpagetitle : 'Main Page'}]
         ).concat(files),
@@ -598,7 +598,7 @@ exports.publish = function(taffyData, opts, tutorials) {
 
         var myClasses = helper.find(classes, {longname: longname});
         if (myClasses.length) {
-            generate('', myClasses, helper.longnameToUrl[longname]);
+            generate('Class: ' + longname, myClasses, helper.longnameToUrl[longname]);
         }
 
         var myNamespaces = helper.find(namespaces, {longname: longname});
@@ -643,7 +643,7 @@ exports.publish = function(taffyData, opts, tutorials) {
     // tutorials can have only one parent so there is no risk for loops
     function saveChildren(node) {
         node.children.forEach(function(child) {
-            generateTutorial('', child, helper.tutorialToUrl(child.name));
+            generateTutorial('Tutorial: ' + child.name, child, helper.tutorialToUrl(child.name));
             saveChildren(child);
         });
     }
