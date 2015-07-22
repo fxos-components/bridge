@@ -1,4 +1,11 @@
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.client = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.threads = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function (global){
+var threads = global.threads || {};
+threads.client = require('../lib/client');
+module.exports = threads;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"../lib/client":2}],2:[function(require,module,exports){
 'use strict';
 
 /**
@@ -38,7 +45,7 @@ var debug = 0 ? function(arg1, ...args) {
  * @example
  *
  * var endpoint = document.querySelector('iframe');
- * var myClient = client('my-service', endpoint);
+ * var client = threads.client('my-service', endpoint);
  *
  * @constructor
  * @param {String} service The service name to connect to
@@ -138,7 +145,7 @@ Client.prototype = {
    *
    * @example
    *
-   * myClient.method('ping').then(result => {
+   * client.method('ping').then(result => {
    *   console.log(result); //=> 'pong'
    * });
    *
@@ -171,7 +178,7 @@ Client.prototype = {
    *
    * @example
    *
-   * myClient.plugin(megaPlugin);
+   * client.plugin(megaPlugin);
    *
    * @param  {Function} fn The plugin
    * @return {this} for chaining
@@ -214,7 +221,6 @@ Client.prototype = {
    *
    * @private
    */
-
   cancelPending() {
     debug('cancel pending');
     this.pending.forEach(msg => { msg.cancel();});
@@ -269,7 +275,7 @@ Client.prototype = {
    *
    * @example
    *
-   * myClient.destroy().then(() => ...);
+   * client.destroy().then(() => ...);
    *
    * @public
    * @return {Promise}
@@ -298,7 +304,7 @@ Client.prototype = {
  *
  * @example
  *
- * myClient
+ * client
  *   .on('importantevent', data => ...)
  *   .on('thingchanged', thing => ...);
  *
@@ -328,9 +334,9 @@ Client.prototype.on = function(name, fn) {
  *
  * @example
  *
- * myClient
- *   .off('importantevent', data => ...)
- *   .off('thingchanged', thing => ...);
+ * client
+ *   .off('importantevent') // remove all
+ *   .off('thingchanged', onThingChanged); // remove one
  *
  * @this Client
  * @param  {String} name The event name
@@ -368,7 +374,7 @@ function error(id) {
   }[id]);
 }
 
-},{"./message":2,"./utils/emitter":3,"./utils/uuid":4}],2:[function(require,module,exports){
+},{"./message":3,"./utils/emitter":4,"./utils/uuid":5}],3:[function(require,module,exports){
 'use strict';
 
 /**
@@ -396,7 +402,6 @@ exports.Message = Message;
  * @type {Function}
  * @private
  */
-
 var debug = 0 ? function(arg1, ...args) {
   var type = `[${self.constructor.name}][${location.pathname}]`;
   console.log(`[Message]${type} - "${arg1}"`, ...args);
@@ -405,7 +410,6 @@ var debug = 0 ? function(arg1, ...args) {
 /**
  * Initialize a new `Message`
  *
- * @private
  * @class Message
  * @borrows Emitter#on as #on
  * @borrows Emitter#off as #off
@@ -542,6 +546,12 @@ Message.prototype = {
     this.unlisten();
   },
 
+  /**
+   * Respond to a message.
+   *
+   * @param  {*} [result]
+   * @public
+   */
   respond(result) {
     debug('respond', result);
 
@@ -915,7 +925,7 @@ function error(id) {
 function on(target, name, fn) { target.addEventListener(name, fn); }
 function off(target, name, fn) { target.removeEventListener(name, fn); }
 
-},{"./utils/emitter":3,"./utils/uuid":4}],3:[function(require,module,exports){
+},{"./utils/emitter":4,"./utils/uuid":5}],4:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1017,7 +1027,7 @@ Emitter.prototype = {
   }
 };
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 'use strict';
 
 /**

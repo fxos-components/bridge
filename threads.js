@@ -46,7 +46,7 @@ var debug = 0 ? function(arg1, ...args) {
  * @example
  *
  * var endpoint = document.querySelector('iframe');
- * var myClient = client('my-service', endpoint);
+ * var client = threads.client('my-service', endpoint);
  *
  * @constructor
  * @param {String} service The service name to connect to
@@ -146,7 +146,7 @@ Client.prototype = {
    *
    * @example
    *
-   * myClient.method('ping').then(result => {
+   * client.method('ping').then(result => {
    *   console.log(result); //=> 'pong'
    * });
    *
@@ -179,7 +179,7 @@ Client.prototype = {
    *
    * @example
    *
-   * myClient.plugin(megaPlugin);
+   * client.plugin(megaPlugin);
    *
    * @param  {Function} fn The plugin
    * @return {this} for chaining
@@ -222,7 +222,6 @@ Client.prototype = {
    *
    * @private
    */
-
   cancelPending() {
     debug('cancel pending');
     this.pending.forEach(msg => { msg.cancel();});
@@ -277,7 +276,7 @@ Client.prototype = {
    *
    * @example
    *
-   * myClient.destroy().then(() => ...);
+   * client.destroy().then(() => ...);
    *
    * @public
    * @return {Promise}
@@ -306,7 +305,7 @@ Client.prototype = {
  *
  * @example
  *
- * myClient
+ * client
  *   .on('importantevent', data => ...)
  *   .on('thingchanged', thing => ...);
  *
@@ -336,9 +335,9 @@ Client.prototype.on = function(name, fn) {
  *
  * @example
  *
- * myClient
- *   .off('importantevent', data => ...)
- *   .off('thingchanged', thing => ...);
+ * client
+ *   .off('importantevent') // remove all
+ *   .off('thingchanged', onThingChanged); // remove one
  *
  * @this Client
  * @param  {String} name The event name
@@ -404,7 +403,6 @@ exports.Message = Message;
  * @type {Function}
  * @private
  */
-
 var debug = 0 ? function(arg1, ...args) {
   var type = `[${self.constructor.name}][${location.pathname}]`;
   console.log(`[Message]${type} - "${arg1}"`, ...args);
@@ -413,7 +411,6 @@ var debug = 0 ? function(arg1, ...args) {
 /**
  * Initialize a new `Message`
  *
- * @private
  * @class Message
  * @borrows Emitter#on as #on
  * @borrows Emitter#off as #off
@@ -550,6 +547,12 @@ Message.prototype = {
     this.unlisten();
   },
 
+  /**
+   * Respond to a message.
+   *
+   * @param  {*} [result]
+   * @public
+   */
   respond(result) {
     debug('respond', result);
 
@@ -967,7 +970,7 @@ Service.prototype = Object.create(Receiver.prototype);
  *
  * @example
  *
- * service('my-service')
+ * threads.service('my-service')
  *   .method('ping', param => 'pong: ' + param)
  *   .listen();
  *
@@ -1003,19 +1006,21 @@ function Service(name) {
  *
  * @example
  *
- * service('my-service')
+ * threads.service('my-service')
  *
- *  // sync return value
- *  .method('myMethod', function(param) {
- *    return 'hello: ' + param;
- *  })
+ *   // sync return value
+ *   .method('myMethod', function(param) {
+ *     return 'hello: ' + param;
+ *   })
  *
- *  // or async Promise
- *  .method('myOtherMethod', function() {
- *    return new Promise(resolve => {
- *      setTimeout(() => resolve('result'), 1000);
- *    });
- *  })
+ *   // or async Promise
+ *   .method('myOtherMethod', function() {
+ *     return new Promise(resolve => {
+ *       setTimeout(() => resolve('result'), 1000);
+ *     });
+ *   })
+ *
+ *   .listen();
  *
  * @param  {String}   name
  * @param  {Function} fn
@@ -1243,7 +1248,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('before-connect', message => {
+ * service.on('before-connect', message => {
  *   message.preventDefault();
  *   // alternative connection logic ...
  * });
@@ -1257,7 +1262,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('connected', clientId => {
+ * service.on('connected', clientId => {
  *   console.log('client (%s) has connected', clientId);
  * });
  *
@@ -1272,7 +1277,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('before-disconnect', message => {
+ * service.on('before-disconnect', message => {
  *   message.preventDefault();
  *   // alternative disconnection logic ...
  * });
@@ -1286,7 +1291,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('disconnected', clientId => {
+ * service.on('disconnected', clientId => {
  *   console.log('client (%s) has disconnected', clientId);
  * });
  *
@@ -1300,7 +1305,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('on', data => {
+ * service.on('on', data => {
  *   console.log('client (%s) is listening to %s', data.clientId, data.name);
  * });
  *
@@ -1316,7 +1321,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('off', data => {
+ * service.on('off', data => {
  *   console.log('client (%s) stopped listening to %s', data.clientId, data.name);
  * });
  *

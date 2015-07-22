@@ -1,4 +1,11 @@
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.service = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.threads = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function (global){
+var threads = global.threads || {};
+threads.service = require('../lib/service');
+module.exports = threads;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"../lib/service":3}],2:[function(require,module,exports){
 'use strict';
 
 /**
@@ -26,7 +33,6 @@ exports.Message = Message;
  * @type {Function}
  * @private
  */
-
 var debug = 0 ? function(arg1, ...args) {
   var type = `[${self.constructor.name}][${location.pathname}]`;
   console.log(`[Message]${type} - "${arg1}"`, ...args);
@@ -35,7 +41,6 @@ var debug = 0 ? function(arg1, ...args) {
 /**
  * Initialize a new `Message`
  *
- * @private
  * @class Message
  * @borrows Emitter#on as #on
  * @borrows Emitter#off as #off
@@ -172,6 +177,12 @@ Message.prototype = {
     this.unlisten();
   },
 
+  /**
+   * Respond to a message.
+   *
+   * @param  {*} [result]
+   * @public
+   */
   respond(result) {
     debug('respond', result);
 
@@ -545,7 +556,7 @@ function error(id) {
 function on(target, name, fn) { target.addEventListener(name, fn); }
 function off(target, name, fn) { target.removeEventListener(name, fn); }
 
-},{"./utils/emitter":3,"./utils/uuid":4}],2:[function(require,module,exports){
+},{"./utils/emitter":4,"./utils/uuid":5}],3:[function(require,module,exports){
 'use strict';
 
 /**
@@ -589,7 +600,7 @@ Service.prototype = Object.create(Receiver.prototype);
  *
  * @example
  *
- * service('my-service')
+ * threads.service('my-service')
  *   .method('ping', param => 'pong: ' + param)
  *   .listen();
  *
@@ -625,19 +636,21 @@ function Service(name) {
  *
  * @example
  *
- * service('my-service')
+ * threads.service('my-service')
  *
- *  // sync return value
- *  .method('myMethod', function(param) {
- *    return 'hello: ' + param;
- *  })
+ *   // sync return value
+ *   .method('myMethod', function(param) {
+ *     return 'hello: ' + param;
+ *   })
  *
- *  // or async Promise
- *  .method('myOtherMethod', function() {
- *    return new Promise(resolve => {
- *      setTimeout(() => resolve('result'), 1000);
- *    });
- *  })
+ *   // or async Promise
+ *   .method('myOtherMethod', function() {
+ *     return new Promise(resolve => {
+ *       setTimeout(() => resolve('result'), 1000);
+ *     });
+ *   })
+ *
+ *   .listen();
  *
  * @param  {String}   name
  * @param  {Function} fn
@@ -865,7 +878,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('before-connect', message => {
+ * service.on('before-connect', message => {
  *   message.preventDefault();
  *   // alternative connection logic ...
  * });
@@ -879,7 +892,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('connected', clientId => {
+ * service.on('connected', clientId => {
  *   console.log('client (%s) has connected', clientId);
  * });
  *
@@ -894,7 +907,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('before-disconnect', message => {
+ * service.on('before-disconnect', message => {
  *   message.preventDefault();
  *   // alternative disconnection logic ...
  * });
@@ -908,7 +921,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('disconnected', clientId => {
+ * service.on('disconnected', clientId => {
  *   console.log('client (%s) has disconnected', clientId);
  * });
  *
@@ -922,7 +935,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('on', data => {
+ * service.on('on', data => {
  *   console.log('client (%s) is listening to %s', data.clientId, data.name);
  * });
  *
@@ -938,7 +951,7 @@ function error(id) {
  *
  * @example
  *
- * myService.on('off', data => {
+ * service.on('off', data => {
  *   console.log('client (%s) stopped listening to %s', data.clientId, data.name);
  * });
  *
@@ -948,7 +961,7 @@ function error(id) {
  * @param {String} data.clientId - The id of the Client that stopped listening
  */
 
-},{"./message":1,"./utils/uuid":4}],3:[function(require,module,exports){
+},{"./message":2,"./utils/uuid":5}],4:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1050,7 +1063,7 @@ Emitter.prototype = {
   }
 };
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1076,5 +1089,5 @@ module.exports = (function() {
   };
 })();
 
-},{}]},{},[2])(2)
+},{}]},{},[1])(1)
 });

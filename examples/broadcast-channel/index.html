@@ -11,7 +11,7 @@
   var list = document.querySelector('ul');
   new SharedWorker('shared-worker-client.js');
 
-  service('logger')
+  threads.service('logger')
     .listen(new BroadcastChannel('logger-service-channel'))
     .method('log', text => {
       var item = document.createElement('li');

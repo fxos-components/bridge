@@ -1,5 +1,5 @@
 importScripts('../../service.js');
 
-service('my-service')
+threads.service('my-service')
   .method('ping', () => 'pong')
   .listen();

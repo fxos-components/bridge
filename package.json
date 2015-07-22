@@ -11,8 +11,8 @@
     "docs": "rm -rf docs/threads && babel lib --out-dir lib-es5 && jsdoc -c docs/jsdoc.json && rm -rf lib-es5",
 
     "bundle": "browserify index.js -s threads -o threads.js && npm run bundle-client && npm run bundle-service",
-    "bundle-client": "browserify lib/client -s client -o client.js",
-    "bundle-service": "browserify lib/service -s service -o service.js",
+    "bundle-client": "browserify build/client -s threads -o client.js",
+    "bundle-service": "browserify build/service -s threads -o service.js",
     "compress": "ccjs threads.js --language_in=ECMASCRIPT6 --language_out=ES5 > threads.min.js && npm run compress-client && npm run compress-service",
     "compress-client": "ccjs client.js --language_in=ECMASCRIPT6 --language_out=ES5 > client.min.js",
     "compress-service": "ccjs service.js --language_in=ECMASCRIPT6 --language_out=ES5 > service.min.js",
