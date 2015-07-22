@@ -37,6 +37,7 @@ Worker: `importScripts('threads.js')`
 
 > When possible use lighter `thread-client.js` or `threads-service.js`
 
-## <a class="jsdoc-hidden" href="https://gaia-components.github.io/threads/docs/out/index.html">View Documentation</a>
+<h2 class="jsdoc-hidden">Documentation</h2>
+<a class="jsdoc-hidden" href="https://gaia-components.github.io/threads/docs/out/index.html">View documentation</a>
 
 
