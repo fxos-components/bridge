@@ -5,7 +5,109 @@ threads.service = require('../lib/service');
 module.exports = threads;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../lib/service":3}],2:[function(require,module,exports){
+},{"../lib/service":5}],2:[function(require,module,exports){
+'use strict';
+
+/**
+ * Exports
+ * @ignore
+ */
+
+module.exports = Emitter;
+
+/**
+ * Simple logger
+ *
+ * @type {Function}
+ * @private
+ */
+
+var debug = 0 ? console.log.bind(console, '[Emitter]') : () => {};
+
+/**
+ * Create new `Emitter`
+ *
+ * @class Emitter
+ */
+
+function Emitter(host) {
+  if (host) return Object.assign(host, Emitter.prototype);
+}
+
+Emitter.prototype = {
+
+  /**
+   * Add an event listener.
+   *
+   * It is possible to subscript to * events.
+   *
+   * @param  {String}   type
+   * @param  {Function} callback
+   * @return {this} for chaining
+   */
+
+  on(type, callback) {
+    debug('on', type, callback);
+    if (!this._callbacks) this._callbacks = {};
+    if (!this._callbacks[type]) this._callbacks[type] = [];
+    this._callbacks[type].push(callback);
+    return this;
+  },
+
+  /**
+   * Remove an event listener.
+   *
+   * @example
+   *
+   * emitter.off('name', fn); // remove one callback
+   * emitter.off('name'); // remove all callbacks for 'name'
+   * emitter.off(); // remove all callbacks
+   *
+   * @param  {String} [type]
+   * @param  {Function} [callback]
+   * @return {this} for chaining
+   */
+
+  off(type, callback) {
+    debug('off', type, callback);
+    if (this._callbacks) {
+      switch (arguments.length) {
+        case 0: this._callbacks = {}; break;
+        case 1: delete this._callbacks[type]; break;
+        default:
+          var typeListeners = this._callbacks[type];
+          if (!typeListeners) return;
+          var i = typeListeners.indexOf(callback);
+          if (~i) typeListeners.splice(i, 1);
+      }
+    }
+    return this;
+  },
+
+  /**
+   * Emit an event.
+   *
+   * @example
+   *
+   * emitter.emit('name', { some: 'data' });
+   *
+   * @param  {String} type
+   * @param  {*} [data]
+   * @return {this} for chaining
+   */
+
+  emit(type, data) {
+    debug('emit', type, data);
+    if (this._callbacks) {
+      var fns = this._callbacks[type] || [];
+      fns = fns.concat(this._callbacks['*'] || []);
+      for (var i = 0; i < fns.length; i++) fns[i].call(this, data, type);
+    }
+    return this;
+  }
+};
+
+},{}],3:[function(require,module,exports){
 'use strict';
 
 /**
@@ -13,8 +115,11 @@ module.exports = threads;
  * @ignore
  */
 
-var Emitter = require('./utils/emitter');
-var uuid = require('./utils/uuid');
+var createPort = require('./port-adaptors');
+var Emitter = require('../emitter');
+var utils = require('../utils');
+var deferred = utils.deferred;
+var uuid = utils.uuid;
 
 /**
  * Exports
@@ -24,7 +129,6 @@ var uuid = require('./utils/uuid');
 exports = module.exports = type => new Message(type);
 exports.receiver = (id, n) => new Receiver(id, n);
 exports.Receiver = Receiver;
-exports.endpoint = PortAdaptor;
 exports.Message = Message;
 
 /**
@@ -55,6 +159,7 @@ function Message(type) {
   this.onTimeout = this.onTimeout.bind(this);
   if (typeof type === 'object') this.setupInbound(type);
   else this.setupOutbound(type);
+  debug('initialized', type);
 }
 
 Message.prototype = {
@@ -82,9 +187,9 @@ Message.prototype = {
     Object.assign(this, e.data);
   },
 
-  setSource(port) {
-    debug('set source', port.constructor.name);
-    this.source = PortAdaptor.create(port, { ready: true });
+  setSource(endpoint) {
+    debug('set source', endpoint.constructor.name);
+    this.source = createPort(endpoint, { ready: true });
     return this;
   },
 
@@ -118,18 +223,16 @@ Message.prototype = {
 
     this._responded = deferred();
     this.responded = this._responded.promise;
-
-    // Endpoint can be set on the message before sending
-    this.endpoint = PortAdaptor.create(endpoint || this.endpoint);
+    this.port = createPort(endpoint || this.endpoint);
 
     if (expectsResponse) {
-      this.listen(this.endpoint);
+      this.listen(this.port);
       this._timeout = setTimeout(this.onTimeout, this.timeout);
     } else {
       this._responded.resolve();
     }
 
-    this.endpoint.postMessage(serialized, this.getTransfer());
+    this.port.postMessage(serialized, this.getTransfer());
     debug('sent', serialized, this.responded);
     return expectsResponse ? this.responded : Promise.resolve();
   },
@@ -152,9 +255,9 @@ Message.prototype = {
     this.teardown();
   },
 
-  listen(port) {
-    debug('add response listener', port);
-    port = PortAdaptor.create(port);
+  listen(thing) {
+    debug('add response listener', thing);
+    var port = createPort(thing);
     port.addListener(this.onMessage);
     this.listeners.push(port);
     return this;
@@ -269,10 +372,11 @@ Message.prototype = {
   }
 };
 
+// Mixin Emitter methods
 Emitter(Message.prototype);
 
 /**
- * Initialize a new `Reciever`.
+ * Initialize a new `Receiver`.
  *
  * @class Receiver
  * @extends Emitter
@@ -280,7 +384,7 @@ Emitter(Message.prototype);
  */
 function Receiver(name) {
   this.name = name;
-  this.endpoints = new Set();
+  this.ports = new Set();
   this.onMessage = this.onMessage.bind(this);
   this.listen = this.listen.bind(this);
   this.unlisten = this.unlisten.bind(this);
@@ -304,15 +408,15 @@ Receiver.prototype = {
    * .listen(new BroadcastChannel('foo'));
    *
    * @param {(HTMLIframeElement|Worker|MessagePort|
-   * BroadcastChannel|Window|Object)} [endpoint]
+   * BroadcastChannel|Window|Object)} [thing]
    * @public
    */
   listen(thing) {
     debug('listen');
-    var endpoint = PortAdaptor.create(thing || self);
-    if (this.endpoints.has(endpoint)) return;
-    endpoint.addListener(this.onMessage, this.listen);
-    this.endpoints.add(endpoint);
+    var _port = createPort(thing || self, { receiver: true });
+    if (this.ports.has(_port)) return;
+    _port.addListener(this.onMessage, this.listen);
+    this.ports.add(_port);
     return this;
   },
 
@@ -320,14 +424,12 @@ Receiver.prototype = {
    * Stop listening for inbound messages
    * on all endpoints listened to prior.
    *
-   * @param {(HTMLIframeElement|Worker|SharedWorker|
-   * BroadcastChannel|Window|Object)} [endpoint]
    * @public
    */
   unlisten() {
     debug('unlisten');
-    this.endpoints.forEach(endpoint => {
-      endpoint.removeListener(this.onMessage, this.unlisten);
+    this.ports.forEach(port => {
+      port.removeListener(this.onMessage, this.unlisten);
     });
   },
 
@@ -367,10 +469,50 @@ Receiver.prototype = {
   }
 };
 
+// Mixin Emitter methods
 Emitter(Receiver.prototype);
 
+function error(id) {
+  return new Error({
+    1: '.send() can only be called once',
+    2: 'response already sent for this message'
+  }[id]);
+}
+
+},{"../emitter":2,"../utils":6,"./port-adaptors":4}],4:[function(require,module,exports){
+'use strict';
+
 /**
- * Port Adaptors
+ * Dependencies
+ * @ignore
+ */
+
+var deferred = require('../utils').deferred;
+
+/**
+ * Mini Logger
+ *
+ * @type {Function}
+ * @private
+ */
+var debug = 0 ? function(arg1, ...args) {
+  var type = `[${self.constructor.name}][${location.pathname}]`;
+  console.log(`[PortAdaptor]${type} - "${arg1}"`, ...args);
+} : () => {};
+
+const MSG = 'message';
+
+module.exports = function create(target, options) {
+  if (isEndpoint(target)) return target;
+  var type = target.constructor.name;
+  var CustomAdaptor = adaptors[type];
+  debug('creating port adaptor for', type);
+  if (CustomAdaptor) return CustomAdaptor(target, options);
+  return new PortAdaptor(target, options);
+};
+
+/**
+ * The default adaptor.
  * @private
  */
 function PortAdaptor(target) {
@@ -378,14 +520,18 @@ function PortAdaptor(target) {
   this.target = target;
 }
 
-var MSG = 'message';
-
 PortAdaptor.prototype = {
   addListener(callback) { on(this.target, MSG, callback); },
   removeListener(callback) { off(this.target, MSG, callback); },
   postMessage(data, transfer) { this.target.postMessage(data, transfer); }
 };
 
+/**
+ * A registry of specific adaptors
+ * for which the default port-adaptor
+ * is not suitable.
+ * @type {Object}
+ */
 var adaptors = {
   HTMLIFrameElement(target) {
     debug('HTMLIFrameElement');
@@ -403,26 +549,33 @@ var adaptors = {
 
   BroadcastChannel(target, options) {
     debug('BroadcastChannel', target.name);
+    var receiver = options && options.receiver;
     var ready = options && options.ready;
-    ready = ready ? Promise.resolve() : checkReady();
+    var sendReady = () => {
+      target.postMessage('ready');
+      debug('sent ready');
+    };
 
-    function checkReady() {
-      debug('BroadcastChannel: check Ready');
+    ready = ready || receiver
+      ? Promise.resolve()
+      : setupSender();
+
+    if (receiver) {
+      sendReady();
+      on(target, MSG, e => {
+        if (e.data != 'ready?') return;
+        sendReady();
+      });
+    }
+
+    function setupSender() {
+      debug('setup sender');
       var promise = deferred();
 
-      // Tell the other end we're ready
-      // NOTE: it may not be listening yet
-      target.postMessage('ready');
-
-      // Listen for a 'ready' message once
+      target.postMessage('ready?');
       on(target, MSG, function fn(e) {
         if (e.data != 'ready') return;
         off(target, MSG, fn);
-
-        // Now tell the other end we're
-        // ready again just in case it
-        // wasn't listening the first time
-        target.postMessage('ready');
         debug('BroadcastChannel: ready');
         promise.resolve();
       });
@@ -481,39 +634,14 @@ var adaptors = {
   }
 };
 
-PortAdaptor.create = function(target, options) {
-  if (isEndpoint(target)) return target;
-  var type = target.constructor.name;
-  var CustomAdaptor = adaptors[type];
-  debug('creating port adaptor for', type);
-  if (CustomAdaptor) return CustomAdaptor(target, options);
-  return new PortAdaptor(target, options);
-};
-
-/**
- * Utils
- * @private
- */
-function isEndpoint(thing) {
-  return !!thing.addListener;
-}
-
-function deferred() {
-  var promise = {};
-  promise.promise = new Promise((resolve, reject) => {
-    promise.resolve = resolve;
-    promise.reject = reject;
-  });
-  return promise;
-}
-
 var windowReady = (function() {
   if (typeof window == 'undefined') return;
   var parent = window.opener || window.parent;
   var domReady = 'DOMContentLoaded';
   var windows = new WeakSet();
 
-  // Side B: Dispatches 'ready' from the child window.
+  // Side B: Dispatches 'load'
+  // from the child window
   if (parent != self) {
     on(window, domReady, function fn() {
       off(window, domReady, fn);
@@ -546,17 +674,18 @@ var windowReady = (function() {
   };
 })();
 
-function error(id) {
-  return new Error({
-    1: '.send() can only be called once',
-    2: 'response already sent for this message'
-  }[id]);
+/**
+ * Utils
+ * @ignore
+ */
+
+function isEndpoint(thing) {
+  return !!thing.addListener;
 }
 
 function on(target, name, fn) { target.addEventListener(name, fn); }
 function off(target, name, fn) { target.removeEventListener(name, fn); }
-
-},{"./utils/emitter":4,"./utils/uuid":5}],3:[function(require,module,exports){
+},{"../utils":6}],5:[function(require,module,exports){
 'use strict';
 
 /**
@@ -564,7 +693,7 @@ function off(target, name, fn) { target.removeEventListener(name, fn); }
  * @ignore
  */
 
-var uuid = require('./utils/uuid');
+var uuid = require('./utils').uuid;
 var message = require('./message');
 var Receiver = message.Receiver;
 
@@ -961,109 +1090,7 @@ function error(id) {
  * @param {String} data.clientId - The id of the Client that stopped listening
  */
 
-},{"./message":2,"./utils/uuid":5}],4:[function(require,module,exports){
-'use strict';
-
-/**
- * Exports
- * @ignore
- */
-
-module.exports = Emitter;
-
-/**
- * Simple logger
- *
- * @type {Function}
- * @private
- */
-
-var debug = 0 ? console.log.bind(console, '[Emitter]') : () => {};
-
-/**
- * Create new `Emitter`
- *
- * @class Emitter
- */
-
-function Emitter(host) {
-  if (host) return Object.assign(host, Emitter.prototype);
-}
-
-Emitter.prototype = {
-
-  /**
-   * Add an event listener.
-   *
-   * It is possible to subscript to * events.
-   *
-   * @param  {String}   type
-   * @param  {Function} callback
-   * @return {this} for chaining
-   */
-
-  on(type, callback) {
-    debug('on', type, callback);
-    if (!this._callbacks) this._callbacks = {};
-    if (!this._callbacks[type]) this._callbacks[type] = [];
-    this._callbacks[type].push(callback);
-    return this;
-  },
-
-  /**
-   * Remove an event listener.
-   *
-   * @example
-   *
-   * emitter.off('name', fn); // remove one callback
-   * emitter.off('name'); // remove all callbacks for 'name'
-   * emitter.off(); // remove all callbacks
-   *
-   * @param  {String} [type]
-   * @param  {Function} [callback]
-   * @return {this} for chaining
-   */
-
-  off(type, callback) {
-    debug('off', type, callback);
-    if (this._callbacks) {
-      switch (arguments.length) {
-        case 0: this._callbacks = {}; break;
-        case 1: delete this._callbacks[type]; break;
-        default:
-          var typeListeners = this._callbacks[type];
-          if (!typeListeners) return;
-          var i = typeListeners.indexOf(callback);
-          if (~i) typeListeners.splice(i, 1);
-      }
-    }
-    return this;
-  },
-
-  /**
-   * Emit an event.
-   *
-   * @example
-   *
-   * emitter.emit('name', { some: 'data' });
-   *
-   * @param  {String} type
-   * @param  {*} [data]
-   * @return {this} for chaining
-   */
-
-  emit(type, data) {
-    debug('emit', type, data);
-    if (this._callbacks) {
-      var fns = this._callbacks[type] || [];
-      fns = fns.concat(this._callbacks['*'] || []);
-      for (var i = 0; i < fns.length; i++) fns[i].call(this, data, type);
-    }
-    return this;
-  }
-};
-
-},{}],5:[function(require,module,exports){
+},{"./message":3,"./utils":6}],6:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1074,7 +1101,7 @@ Emitter.prototype = {
  * @return {String}
  */
 
-module.exports = (function() {
+exports.uuid = (function() {
   var l = [];
   for (var i=0; i<256; i++) { l[i] = (i<16?'0':'')+(i).toString(16); }
   return function () {
@@ -1088,6 +1115,15 @@ module.exports = (function() {
       l[d3&0xff]+l[d3>>8&0xff]+l[d3>>16&0xff]+l[d3>>24&0xff];
   };
 })();
+
+exports.deferred = function() {
+  var promise = {};
+  promise.promise = new Promise((resolve, reject) => {
+    promise.resolve = resolve;
+    promise.reject = reject;
+  });
+  return promise;
+};
 
 },{}]},{},[1])(1)
 });

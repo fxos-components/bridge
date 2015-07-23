@@ -65,12 +65,10 @@ message.receiver('receiver-2')
  */
 
 message.receiver('bc-reciever')
+  .listen(new BroadcastChannel('send-test'))
   .on('ping', message => {
     message.respond('pong');
-  })
-
-  .listen(new BroadcastChannel('send-test'));
-
+  });
 
 message('ping')
   .send(new BroadcastChannel('receive-test'));

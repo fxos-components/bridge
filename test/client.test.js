@@ -10,7 +10,11 @@ suite('Client()', function() {
 
   setup(function() {
     this.sinon = sinon.sandbox.create();
-    this.endpoint = sinon.createStubInstance(message.endpoint);
+    this.endpoint = {
+      addListener: sinon.stub(),
+      removeListener: sinon.stub(),
+      postMessage: sinon.stub()
+    };
 
     this.sinon.stub(client.prototype, 'message', type => {
       Message.prototype.send.restore();

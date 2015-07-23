@@ -249,12 +249,16 @@ suite('Message', function() {
       test('it can send messages', function(done) {
         bc = new BroadcastChannel('send-test');
 
+        // setTimeout(() => {
+
         message('ping')
           .send(bc)
           .then(response => {
             assert.equal(response.value, 'pong');
             done();
           });
+
+        // }, 300);
       });
 
       test('it can recieve messages', function(done) {
@@ -266,6 +270,29 @@ suite('Message', function() {
             done();
           })
           .listen(bc);
+      });
+
+      test('a receiver (service) can cope with several message senders (clients)', function(done) {
+        var count = 0;
+
+        bc = new BroadcastChannel('multi-sender-test');
+        var bc2 = new BroadcastChannel('multi-sender-test');
+
+        var receiver= createReceiver('bc')
+          .on('ping', message => {
+            if (++count === 4) {
+              setTimeout(() => {
+                assert.equal(count, 4, 'no more have run');
+                done();
+              }, 100);
+            }
+          });
+
+        message('ping').send(bc2);
+        setTimeout(() => receiver.listen(bc));
+        setTimeout(() => message('ping').send(bc2), 100);
+        setTimeout(() => message('ping').send(bc2), 200);
+        setTimeout(() => message('ping').send(bc2), 300);
       });
     });
   });
