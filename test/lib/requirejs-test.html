@@ -1,0 +1,7 @@
+<script src="require.js"></script>
+<script>
+  require(['/base/threads.js'], function(threads) {
+    var client = threads.client('requirejs-test', window.parent);
+    client.method('ping');
+  });
+</script>

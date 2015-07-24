@@ -394,6 +394,17 @@ suite('end-to-end', function() {
     });
   });
 
+  suite('module support >>', function() {
+    test('AMD', function(done) {
+      var iframe = iframeService('requirejs-test.html');
+      threads.service('requirejs-test')
+        .listen(iframe)
+        .method('ping', function() {
+          done();
+        });
+    });
+  });
+
   /**
    * Utils
    */
