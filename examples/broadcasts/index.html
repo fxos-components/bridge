@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>examples/broadcast-channel</title>
+  <script src="../../threads.min.js"></script>
+  <link rel="stylesheet" href="https://code.cdn.mozilla.net/fonts/fira.css">
+  <style>
+
+  * { margin: 0; padding: 0; }
+
+    html {
+      height: 100%;
+    }
+
+    body {
+      display: flex;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Fira Sans', sans-serif;
+      color: #E98C25;
+    }
+
+    time {
+      margin-top: -0.66em;
+      font-size: 10em;
+      font-weight: 200;
+      width: 3em;
+      opacity: 0;
+      transition: opacity 2000ms;
+    }
+
+    time.rendered {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+<time></time>
+<script>
+  var time = document.querySelector('time');
+  var worker = new Worker('worker.js');
+
+  threads.client('clock', worker)
+    .on('tick', date => render(date));
+
+  function render(date) {
+    time.textContent = date.getHours() + ':' +
+    pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+    time.classList.add('rendered');
+  }
+
+  function pad(num) {
+    return num < 10 ? '0' + num : num;
+  }
+</script>
+</body>
+</html>

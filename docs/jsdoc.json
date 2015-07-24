@@ -1,10 +1,10 @@
 {
   "source": {
     "include": [
-      "lib-es5/client.js",
-      "lib-es5/service.js",
-      "lib-es5/message.js",
-      "lib-es5/utils/emitter.js"
+      "src-es5/client.js",
+      "src-es5/service.js",
+      "src-es5/message/index.js",
+      "src-es5/emitter.js"
     ]
   },
   "repo": "https://github.com/gaia-components/threads",

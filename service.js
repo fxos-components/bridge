@@ -148,7 +148,6 @@ var debug = 0 ? function(arg1, ...args) {
 /**
  * Initialize a new `Message`
  *
- * @constructor
  * @class Message
  * @borrows Emitter#on as #on
  * @borrows Emitter#off as #off
@@ -292,7 +291,7 @@ Message.prototype = {
    *
    * msg.cancel();
    *
-   * @return {[type]} [description]
+   * @public
    */
   cancel: function() {
     this.teardown();
@@ -413,7 +412,6 @@ Emitter(Message.prototype);
 /**
  * Initialize a new `Receiver`.
  *
- * @constructor
  * @class Receiver
  * @extends Emitter
  * @param {String} name - corresponds to `Message.recipient`
