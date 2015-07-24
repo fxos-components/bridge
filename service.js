@@ -800,7 +800,6 @@ Service.prototype = Object.create(Receiver.prototype);
  *   .method('ping', param => 'pong: ' + param)
  *   .listen();
  *
- * @constructor
  * @class Service
  * @extends Receiver
  * @param {String} name The service name
