@@ -7,6 +7,8 @@
 
 var deferred = require('../utils').deferred;
 
+const MSG = 'message';
+
 /**
  * Mini Logger
  *
@@ -18,8 +20,12 @@ var debug = 0 ? function(arg1, ...args) {
   console.log(`[PortAdaptor]${type} - "${arg1}"`, ...args);
 } : () => {};
 
-const MSG = 'message';
-
+/**
+ * Creates a
+ * @param  {[type]} target  [description]
+ * @param  {[type]} options [description]
+ * @return {[type]}         [description]
+ */
 module.exports = function create(target, options) {
   if (isEndpoint(target)) return target;
   var type = target.constructor.name;
@@ -38,7 +44,7 @@ function PortAdaptor(target) {
   this.target = target;
 }
 
-PortAdaptor.prototype = {
+var PortAdaptorProto = PortAdaptor.prototype = {
   addListener(callback) { on(this.target, MSG, callback); },
   removeListener(callback) { off(this.target, MSG, callback); },
   postMessage(data, transfer) { this.target.postMessage(data, transfer); }
@@ -48,29 +54,42 @@ PortAdaptor.prototype = {
  * A registry of specific adaptors
  * for which the default port-adaptor
  * is not suitable.
+ *
  * @type {Object}
  */
 var adaptors = {
-  HTMLIFrameElement(target) {
+
+  /**
+   * Create an HTMLIframeElement PortAdaptor.
+   *
+   * @param {HTMLIframeElement} iframe
+   */
+  HTMLIFrameElement(iframe) {
     debug('HTMLIFrameElement');
-    var ready = windowReady(target);
+    var ready = windowReady(iframe);
     return {
       addListener(callback, listen) { on(window, MSG, callback); },
       removeListener(callback, listen) { off(window, MSG, callback); },
       postMessage(data, transfer) {
         ready.then(() => {
-          target.contentWindow.postMessage(data, '*', transfer);
+          iframe.contentWindow.postMessage(data, '*', transfer);
         });
       }
     };
   },
 
-  BroadcastChannel(target, options) {
-    debug('BroadcastChannel', target.name);
+  /**
+   * Create a BroadcastChannel port-adaptor.
+   *
+   * @param {Object} channel
+   * @param {[type]} options [description]
+   */
+  BroadcastChannel(channel, options) {
+    debug('BroadcastChannel', channel.name);
     var receiver = options && options.receiver;
     var ready = options && options.ready;
     var sendReady = () => {
-      target.postMessage('ready');
+      channel.postMessage('ready');
       debug('sent ready');
     };
 
@@ -80,7 +99,7 @@ var adaptors = {
 
     if (receiver) {
       sendReady();
-      on(target, MSG, e => {
+      on(channel, MSG, e => {
         if (e.data != 'ready?') return;
         sendReady();
       });
@@ -90,10 +109,10 @@ var adaptors = {
       debug('setup sender');
       var promise = deferred();
 
-      target.postMessage('ready?');
-      on(target, MSG, function fn(e) {
+      channel.postMessage('ready?');
+      on(channel, MSG, function fn(e) {
         if (e.data != 'ready') return;
-        off(target, MSG, fn);
+        off(channel, MSG, fn);
         debug('BroadcastChannel: ready');
         promise.resolve();
       });
@@ -102,30 +121,30 @@ var adaptors = {
     }
 
     return {
-      target: target,
-      addListener: PortAdaptor.prototype.addListener,
-      removeListener: PortAdaptor.prototype.removeListener,
+      target: channel,
+      addListener: PortAdaptorProto.addListener,
+      removeListener: PortAdaptorProto.removeListener,
       postMessage(data, transfer) {
-        ready.then(() => target.postMessage(data, transfer));
+        ready.then(() => channel.postMessage(data, transfer));
       }
     };
   },
 
-  Window(target, options) {
+  Window(win, options) {
     debug('Window');
-    var ready = options && options.ready || target === self;
-    ready = ready ? Promise.resolve() : windowReady(target);
+    var ready = options && options.ready || win === self;
+    ready = ready ? Promise.resolve() : windowReady(win);
 
     return {
       addListener(callback, listen) { on(window, MSG, callback); },
       removeListener(callback, listen) { off(window, MSG, callback); },
       postMessage(data, transfer) {
-        ready.then(() => target.postMessage(data, '*', transfer));
+        ready.then(() => win.postMessage(data, '*', transfer));
       }
     };
   },
 
-  SharedWorkerGlobalScope(target) {
+  SharedWorkerGlobalScope() {
     var ports = [];
 
     return {
@@ -201,5 +220,6 @@ function isEndpoint(thing) {
   return !!thing.addListener;
 }
 
+// Shorthand
 function on(target, name, fn) { target.addEventListener(name, fn); }
 function off(target, name, fn) { target.removeEventListener(name, fn); }

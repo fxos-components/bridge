@@ -1,11 +1,10 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.threads = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-(function (global){
-var threads = global.threads || {};
-threads.client = require('../lib/client');
-module.exports = threads;
+var threads = module.exports = self['threads'] || {};
+threads['client'] = require('../src/client');
+if ((typeof define)[0] != 'u') define([], () => threads);
+else self['threads'] = threads;
 
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../lib/client":2}],2:[function(require,module,exports){
+},{"../src/client":2}],2:[function(require,module,exports){
 'use strict';
 
 /**
@@ -65,7 +64,6 @@ function Client(service, endpoint) {
   this.receiver = message.receiver(this.id)
     .on('_broadcast', this.onBroadcast.bind(this));
 
-  // this._on('service:destroyed', this.onServiceDestroyed.bind(this));
   if (!this.endpoint) throw error(1);
   debug('initialized', service);
 }
@@ -80,7 +78,7 @@ Client.prototype = {
    *
    * @public
    */
-  connect() {
+  connect: function() {
     debug('connect');
     if (this.connected) return this.connected;
     debug('connecting...', this.service);
@@ -124,7 +122,7 @@ Client.prototype = {
    *
    * @public
    */
-  disconnect(options) {
+  disconnect: function(options) {
     if (!this.connected) return Promise.resolve();
     debug('disconnecting ...');
 
@@ -146,15 +144,21 @@ Client.prototype = {
    *
    * @example
    *
-   * client.method('ping').then(result => {
-   *   console.log(result); //=> 'pong'
+   * client.method('greet', 'wilson').then(result => {
+   *   console.log(result); //=> 'hello wilson'
+   * });
+   *
+   * // my-service.js:
+   *
+   * service.method('greet', name => {
+   *   return 'hello ' + name;
    * });
    *
    * @param  {String} name The method name
-   * @param  {*} [args]
+   * @param  {...*} [args] Arguments to send
    * @return {Promise}
    */
-  method(name) {
+  method: function(name) {
     var args = [].slice.call(arguments, 1);
 
     return this.connect()
@@ -176,6 +180,7 @@ Client.prototype = {
 
   /**
    * Use a plugin with this Client.
+   * See {@tutorial Writing plugins}.
    *
    * @example
    *
@@ -183,8 +188,9 @@ Client.prototype = {
    *
    * @param  {Function} fn The plugin
    * @return {this} for chaining
+   * @public
    */
-  plugin(fn) {
+  plugin: function(fn) {
     fn(this, {
       message: message,
       Emitter: Emitter,
@@ -204,7 +210,6 @@ Client.prototype = {
    * @return {Message}
    * @private
    */
-
   message(type) {
     debug('create message', type);
     var msg = message(type)
@@ -254,7 +259,6 @@ Client.prototype = {
     this._emit(message.data.type, message.data.data);
   },
 
-
   onDisconnected() {
     delete this.connected;
     this.pendingResponded().then(() => {
@@ -281,7 +285,7 @@ Client.prototype = {
    * @public
    * @return {Promise}
    */
-  destroy() {
+  destroy: function() {
     return this.disconnect()
       .then(() => {
         if (this.destroyed) return;
@@ -345,7 +349,6 @@ Client.prototype.on = function(name, fn) {
  * @return {this} for chaining
  * @public
  */
-
 Client.prototype.off = function(name, fn) {
   this.connect().then(() => {
     Emitter.prototype.off.call(this, name, fn);
@@ -360,6 +363,15 @@ Client.prototype.off = function(name, fn) {
 
   return this;
 };
+
+var cp = Client.prototype;
+cp['destroy'] = cp.destroy;
+cp['plugin'] = cp.plugin;
+cp['method'] = cp.method;
+cp['connect'] = cp.connect;
+cp['disconnect'] = cp.disconnect;
+cp['on'] = cp.on;
+cp['off'] = cp.off;
 
 /**
  * Creates new `Error` from registery.
@@ -416,7 +428,7 @@ Emitter.prototype = {
    * @return {this} for chaining
    */
 
-  on(type, callback) {
+  on: function(type, callback) {
     debug('on', type, callback);
     if (!this._callbacks) this._callbacks = {};
     if (!this._callbacks[type]) this._callbacks[type] = [];
@@ -438,7 +450,7 @@ Emitter.prototype = {
    * @return {this} for chaining
    */
 
-  off(type, callback) {
+  off: function(type, callback) {
     debug('off', type, callback);
     if (this._callbacks) {
       switch (arguments.length) {
@@ -466,7 +478,7 @@ Emitter.prototype = {
    * @return {this} for chaining
    */
 
-  emit(type, data) {
+  emit: function(type, data) {
     debug('emit', type, data);
     if (this._callbacks) {
       var fns = this._callbacks[type] || [];
@@ -476,6 +488,10 @@ Emitter.prototype = {
     return this;
   }
 };
+
+var p = Emitter.prototype;
+p['off'] = p.off;
+p['on'] = p.on;
 
 },{}],4:[function(require,module,exports){
 'use strict';
@@ -515,6 +531,7 @@ var debug = 0 ? function(arg1, ...args) {
 /**
  * Initialize a new `Message`
  *
+ * @constructor
  * @class Message
  * @borrows Emitter#on as #on
  * @borrows Emitter#off as #off
@@ -563,7 +580,7 @@ Message.prototype = {
     return this;
   },
 
-  set(key, value) {
+  set: function(key, value) {
     debug('set', key, value);
     if (typeof key == 'object') Object.assign(this, key);
     else this[key] = value;
@@ -585,7 +602,12 @@ Message.prototype = {
     this.defaultPrevented = true;
   },
 
-  send(endpoint) {
+  /**
+   * Send the message to an endpoint.
+   * @param  {(Iframe|Window|Worker|MessagePort)} endpoint
+   * @return {Promise}
+   */
+  send: function(endpoint) {
     debug('send', this.type);
     if (this.sent) throw error(1);
     var serialized = this.serialize();
@@ -639,7 +661,23 @@ Message.prototype = {
     this.listeners = [];
   },
 
-  cancel() {
+  /**
+   * Cancel a pending Message.
+   *
+   * @example
+   *
+   * var msg = message('foo')
+   *
+   * msg.send(new Worker('my-worker.js'))
+   *   .then(response => {
+   *     // this will never run
+   *   })
+   *
+   * msg.cancel();
+   *
+   * @return {[type]} [description]
+   */
+  cancel: function() {
     this.teardown();
     this.cancelled = true;
     this.emit('cancel');
@@ -656,7 +694,7 @@ Message.prototype = {
    * @param  {*} [result]
    * @public
    */
-  respond(result) {
+  respond: function(result) {
     debug('respond', result);
 
     if (this.hasResponded) throw error(2);
@@ -717,7 +755,7 @@ Message.prototype = {
    * @param  {(HTMLIframeElement|MessagePort|Window)} endpoint
    * @public
    */
-  forward(endpoint) {
+  forward: function(endpoint) {
     debug('forward');
     return this
       .set('silentTimeout', true)
@@ -728,19 +766,29 @@ Message.prototype = {
   onResponse(e) {
     debug('on response', e.data);
     var deferred = this._responded;
-    this.response = e.data.response;
-    this.response.event = e;
+    var response = e.data.response;
+    var type = response.type;
+    var value = type == 'reject'
+      ? response.value
+      : response;
 
+    response.event = e;
+    this.response = response;
     this.teardown();
 
-    switch (this.response.type) {
-      case 'resolve': deferred.resolve(this.response); break;
-      case 'reject': deferred.reject(this.response.value);
-    }
-
-    this.emit('response', this.response);
+    deferred[this.response.type](value);
+    this.emit('response', response);
   }
 };
+
+var mp = Message.prototype;
+mp['forward'] = mp.forward;
+mp['respond'] = mp.respond;
+mp['preventDefault'] = mp.preventDefault;
+mp['cancel'] = mp.cancel;
+mp['send'] = mp.send;
+mp['set'] = mp.set;
+
 
 // Mixin Emitter methods
 Emitter(Message.prototype);
@@ -748,6 +796,7 @@ Emitter(Message.prototype);
 /**
  * Initialize a new `Receiver`.
  *
+ * @constructor
  * @class Receiver
  * @extends Emitter
  * @param {String} name - corresponds to `Message.recipient`
@@ -756,8 +805,8 @@ function Receiver(name) {
   this.name = name;
   this.ports = new Set();
   this.onMessage = this.onMessage.bind(this);
-  this.listen = this.listen.bind(this);
-  this.unlisten = this.unlisten.bind(this);
+  this['listen'] = this['listen'].bind(this);
+  this['unlisten'] = this['unlisten'].bind(this);
   debug('receiver initialized', name);
 }
 
@@ -781,7 +830,7 @@ Receiver.prototype = {
    * BroadcastChannel|Window|Object)} [thing]
    * @public
    */
-  listen(thing) {
+  listen: function(thing) {
     debug('listen');
     var _port = createPort(thing || self, { receiver: true });
     if (this.ports.has(_port)) return;
@@ -796,7 +845,7 @@ Receiver.prototype = {
    *
    * @public
    */
-  unlisten() {
+  unlisten: function() {
     debug('unlisten');
     this.ports.forEach(port => {
       port.removeListener(this.onMessage, this.unlisten);
@@ -832,16 +881,28 @@ Receiver.prototype = {
       || this.name == '*';
   },
 
-  destroy() {
+  destroy: function() {
     this.unlisten();
     delete this.name;
     return this;
   }
 };
 
+var rp = Receiver.prototype;
+rp['listen'] = rp.listen;
+rp['unlisten'] = rp.unlisten;
+rp['destroy'] = rp.destroy;
+
 // Mixin Emitter methods
 Emitter(Receiver.prototype);
 
+/**
+ * Creates new `Error` from registery.
+ *
+ * @param  {Number} id Error Id
+ * @return {Error}
+ * @private
+ */
 function error(id) {
   return new Error({
     1: '.send() can only be called once',
@@ -859,6 +920,8 @@ function error(id) {
 
 var deferred = require('../utils').deferred;
 
+const MSG = 'message';
+
 /**
  * Mini Logger
  *
@@ -870,8 +933,12 @@ var debug = 0 ? function(arg1, ...args) {
   console.log(`[PortAdaptor]${type} - "${arg1}"`, ...args);
 } : () => {};
 
-const MSG = 'message';
-
+/**
+ * Creates a
+ * @param  {[type]} target  [description]
+ * @param  {[type]} options [description]
+ * @return {[type]}         [description]
+ */
 module.exports = function create(target, options) {
   if (isEndpoint(target)) return target;
   var type = target.constructor.name;
@@ -890,7 +957,7 @@ function PortAdaptor(target) {
   this.target = target;
 }
 
-PortAdaptor.prototype = {
+var PortAdaptorProto = PortAdaptor.prototype = {
   addListener(callback) { on(this.target, MSG, callback); },
   removeListener(callback) { off(this.target, MSG, callback); },
   postMessage(data, transfer) { this.target.postMessage(data, transfer); }
@@ -900,29 +967,42 @@ PortAdaptor.prototype = {
  * A registry of specific adaptors
  * for which the default port-adaptor
  * is not suitable.
+ *
  * @type {Object}
  */
 var adaptors = {
-  HTMLIFrameElement(target) {
+
+  /**
+   * Create an HTMLIframeElement PortAdaptor.
+   *
+   * @param {HTMLIframeElement} iframe
+   */
+  HTMLIFrameElement(iframe) {
     debug('HTMLIFrameElement');
-    var ready = windowReady(target);
+    var ready = windowReady(iframe);
     return {
       addListener(callback, listen) { on(window, MSG, callback); },
       removeListener(callback, listen) { off(window, MSG, callback); },
       postMessage(data, transfer) {
         ready.then(() => {
-          target.contentWindow.postMessage(data, '*', transfer);
+          iframe.contentWindow.postMessage(data, '*', transfer);
         });
       }
     };
   },
 
-  BroadcastChannel(target, options) {
-    debug('BroadcastChannel', target.name);
+  /**
+   * Create a BroadcastChannel port-adaptor.
+   *
+   * @param {Object} channel
+   * @param {[type]} options [description]
+   */
+  BroadcastChannel(channel, options) {
+    debug('BroadcastChannel', channel.name);
     var receiver = options && options.receiver;
     var ready = options && options.ready;
     var sendReady = () => {
-      target.postMessage('ready');
+      channel.postMessage('ready');
       debug('sent ready');
     };
 
@@ -932,7 +1012,7 @@ var adaptors = {
 
     if (receiver) {
       sendReady();
-      on(target, MSG, e => {
+      on(channel, MSG, e => {
         if (e.data != 'ready?') return;
         sendReady();
       });
@@ -942,10 +1022,10 @@ var adaptors = {
       debug('setup sender');
       var promise = deferred();
 
-      target.postMessage('ready?');
-      on(target, MSG, function fn(e) {
+      channel.postMessage('ready?');
+      on(channel, MSG, function fn(e) {
         if (e.data != 'ready') return;
-        off(target, MSG, fn);
+        off(channel, MSG, fn);
         debug('BroadcastChannel: ready');
         promise.resolve();
       });
@@ -954,30 +1034,30 @@ var adaptors = {
     }
 
     return {
-      target: target,
-      addListener: PortAdaptor.prototype.addListener,
-      removeListener: PortAdaptor.prototype.removeListener,
+      target: channel,
+      addListener: PortAdaptorProto.addListener,
+      removeListener: PortAdaptorProto.removeListener,
       postMessage(data, transfer) {
-        ready.then(() => target.postMessage(data, transfer));
+        ready.then(() => channel.postMessage(data, transfer));
       }
     };
   },
 
-  Window(target, options) {
+  Window(win, options) {
     debug('Window');
-    var ready = options && options.ready || target === self;
-    ready = ready ? Promise.resolve() : windowReady(target);
+    var ready = options && options.ready || win === self;
+    ready = ready ? Promise.resolve() : windowReady(win);
 
     return {
       addListener(callback, listen) { on(window, MSG, callback); },
       removeListener(callback, listen) { off(window, MSG, callback); },
       postMessage(data, transfer) {
-        ready.then(() => target.postMessage(data, '*', transfer));
+        ready.then(() => win.postMessage(data, '*', transfer));
       }
     };
   },
 
-  SharedWorkerGlobalScope(target) {
+  SharedWorkerGlobalScope() {
     var ports = [];
 
     return {
@@ -1053,8 +1133,10 @@ function isEndpoint(thing) {
   return !!thing.addListener;
 }
 
+// Shorthand
 function on(target, name, fn) { target.addEventListener(name, fn); }
 function off(target, name, fn) { target.removeEventListener(name, fn); }
+
 },{"../utils":6}],6:[function(require,module,exports){
 'use strict';
 
@@ -1066,20 +1148,12 @@ function off(target, name, fn) { target.removeEventListener(name, fn); }
  * @return {String}
  */
 
-exports.uuid = (function() {
-  var l = [];
-  for (var i=0; i<256; i++) { l[i] = (i<16?'0':'')+(i).toString(16); }
-  return function () {
-    var d0 = Math.random()*0xffffffff|0;
-    var d1 = Math.random()*0xffffffff|0;
-    var d2 = Math.random()*0xffffffff|0;
-    var d3 = Math.random()*0xffffffff|0;
-    return l[d0&0xff]+l[d0>>8&0xff]+l[d0>>16&0xff]+l[d0>>24&0xff]+'-'+
-      l[d1&0xff]+l[d1>>8&0xff]+'-'+l[d1>>16&0x0f|0x40]+l[d1>>24&0xff]+'-'+
-      l[d2&0x3f|0x80]+l[d2>>8&0xff]+'-'+l[d2>>16&0xff]+l[d2>>24&0xff]+
-      l[d3&0xff]+l[d3>>8&0xff]+l[d3>>16&0xff]+l[d3>>24&0xff];
-  };
-})();
+exports.uuid = function() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+};
 
 exports.deferred = function() {
   var promise = {};

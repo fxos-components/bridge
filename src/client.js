@@ -57,7 +57,6 @@ function Client(service, endpoint) {
   this.receiver = message.receiver(this.id)
     .on('_broadcast', this.onBroadcast.bind(this));
 
-  // this._on('service:destroyed', this.onServiceDestroyed.bind(this));
   if (!this.endpoint) throw error(1);
   debug('initialized', service);
 }
@@ -72,7 +71,7 @@ Client.prototype = {
    *
    * @public
    */
-  connect() {
+  connect: function() {
     debug('connect');
     if (this.connected) return this.connected;
     debug('connecting...', this.service);
@@ -116,7 +115,7 @@ Client.prototype = {
    *
    * @public
    */
-  disconnect(options) {
+  disconnect: function(options) {
     if (!this.connected) return Promise.resolve();
     debug('disconnecting ...');
 
@@ -138,15 +137,21 @@ Client.prototype = {
    *
    * @example
    *
-   * client.method('ping').then(result => {
-   *   console.log(result); //=> 'pong'
+   * client.method('greet', 'wilson').then(result => {
+   *   console.log(result); //=> 'hello wilson'
+   * });
+   *
+   * // my-service.js:
+   *
+   * service.method('greet', name => {
+   *   return 'hello ' + name;
    * });
    *
    * @param  {String} name The method name
-   * @param  {*} [args]
+   * @param  {...*} [args] Arguments to send
    * @return {Promise}
    */
-  method(name) {
+  method: function(name) {
     var args = [].slice.call(arguments, 1);
 
     return this.connect()
@@ -168,6 +173,7 @@ Client.prototype = {
 
   /**
    * Use a plugin with this Client.
+   * See {@tutorial Writing plugins}.
    *
    * @example
    *
@@ -175,8 +181,9 @@ Client.prototype = {
    *
    * @param  {Function} fn The plugin
    * @return {this} for chaining
+   * @public
    */
-  plugin(fn) {
+  plugin: function(fn) {
     fn(this, {
       message: message,
       Emitter: Emitter,
@@ -196,7 +203,6 @@ Client.prototype = {
    * @return {Message}
    * @private
    */
-
   message(type) {
     debug('create message', type);
     var msg = message(type)
@@ -246,7 +252,6 @@ Client.prototype = {
     this._emit(message.data.type, message.data.data);
   },
 
-
   onDisconnected() {
     delete this.connected;
     this.pendingResponded().then(() => {
@@ -273,7 +278,7 @@ Client.prototype = {
    * @public
    * @return {Promise}
    */
-  destroy() {
+  destroy: function() {
     return this.disconnect()
       .then(() => {
         if (this.destroyed) return;
@@ -337,7 +342,6 @@ Client.prototype.on = function(name, fn) {
  * @return {this} for chaining
  * @public
  */
-
 Client.prototype.off = function(name, fn) {
   this.connect().then(() => {
     Emitter.prototype.off.call(this, name, fn);
@@ -352,6 +356,15 @@ Client.prototype.off = function(name, fn) {
 
   return this;
 };
+
+var cp = Client.prototype;
+cp['destroy'] = cp.destroy;
+cp['plugin'] = cp.plugin;
+cp['method'] = cp.method;
+cp['connect'] = cp.connect;
+cp['disconnect'] = cp.disconnect;
+cp['on'] = cp.on;
+cp['off'] = cp.off;
 
 /**
  * Creates new `Error` from registery.

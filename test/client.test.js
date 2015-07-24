@@ -2,8 +2,8 @@
 /*jshint esnext:true, maxlen:false*/
 
 suite('Client()', function() {
-  var Message = threads._message.Message;
-  var message = threads._message;
+  var message = threads._m;
+  var Message = message.Message;
   var client = threads.client;
   var myClient;
   var msg;

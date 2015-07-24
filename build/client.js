@@ -1,3 +1,4 @@
-var threads = global.threads || {};
-threads.client = require('../lib/client');
-module.exports = threads;
+var threads = module.exports = self['threads'] || {};
+threads['client'] = require('../src/client');
+if ((typeof define)[0] != 'u') define([], () => threads);
+else self['threads'] = threads;

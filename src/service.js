@@ -45,6 +45,7 @@ Service.prototype = Object.create(Receiver.prototype);
  *   .method('ping', param => 'pong: ' + param)
  *   .listen();
  *
+ * @constructor
  * @class Service
  * @extends Receiver
  * @param {String} name The service name
@@ -65,7 +66,6 @@ function Service(name) {
     .on('_on', this.onOn.bind(this));
 
   this.destroy = this.destroy.bind(this);
-  addEventListener('closing', this.destroy);
   debug('initialized', name, self.createEvent);
 }
 
@@ -292,11 +292,16 @@ Service.prototype.disconnect = function(client) {
  * @public
  */
 Service.prototype.destroy = function() {
-  this.broadcast('service:destroyed');
   delete this.clients;
   this.unlisten();
   this.off();
 };
+
+var sp = Service.prototype;
+sp['broadcast'] = sp.broadcast;
+sp['destroy'] = sp.destroy;
+sp['method'] = sp.method;
+sp['plugin'] = sp.plugin;
 
 /**
  * Creates new `Error` from registery.

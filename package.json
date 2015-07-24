@@ -3,23 +3,25 @@
   "version": "1.0.1",
   "homepage": "https://github.com/gaia-components/threads",
   "license": "MIT",
-  "main": "threads.js",
+  "main": "index.js",
   "scripts": {
     "test": "./node_modules/karma/bin/karma start test/karma.conf.js --single-run",
     "test-dev": "./node_modules/karma/bin/karma start test/karma.conf.js",
 
     "docs": "rm -rf docs/threads && babel lib --out-dir lib-es5 && jsdoc -c docs/jsdoc.json && rm -rf lib-es5",
 
-    "bundle": "browserify index.js -s threads -o threads.js && npm run bundle-client && npm run bundle-service",
+    "bundle": "browserify build/threads.js -o threads.js; npm run bundle-client; npm run bundle-service",
     "bundle-client": "browserify build/client -s threads -o client.js",
     "bundle-service": "browserify build/service -s threads -o service.js",
-    "compress": "ccjs threads.js --language_in=ECMASCRIPT6 --language_out=ES5 > threads.min.js && npm run compress-client && npm run compress-service",
-    "compress-client": "ccjs client.js --language_in=ECMASCRIPT6 --language_out=ES5 > client.min.js",
-    "compress-service": "ccjs service.js --language_in=ECMASCRIPT6 --language_out=ES5 > service.min.js",
+
+    "compress": "ccjs threads.js --language_in=ECMASCRIPT6 --language_out=ES5 --compilation_level=ADVANCED_OPTIMIZATIONS > threads.min.js; npm run compress-client; npm run compress-service",
+    "compress-client": "ccjs client.js --language_in=ECMASCRIPT6 --compilation_level=ADVANCED_OPTIMIZATIONS --language_out=ES5 > client.min.js",
+    "compress-service": "ccjs service.js --compilation_level=ADVANCED_OPTIMIZATIONS --language_in=ECMASCRIPT6 --language_out=ES5 > service.min.js",
+
     "build": "npm run bundle",
-    "watch": "watchify index.js -s threads -o threads.js",
-    "watch-client": "watchify lib/client.js -s client -o client.js",
-    "watch-service": "watchify lib/service.js -s service -o service.js"
+    "watch": "watchify build/threads.js -o threads.js",
+    "watch-client": "watchify src/client.js -s client -o client.js",
+    "watch-service": "watchify src/service.js -s service -o service.js"
   },
   "repository": {
     "type": "git",

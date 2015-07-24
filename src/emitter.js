@@ -38,7 +38,7 @@ Emitter.prototype = {
    * @return {this} for chaining
    */
 
-  on(type, callback) {
+  on: function(type, callback) {
     debug('on', type, callback);
     if (!this._callbacks) this._callbacks = {};
     if (!this._callbacks[type]) this._callbacks[type] = [];
@@ -60,7 +60,7 @@ Emitter.prototype = {
    * @return {this} for chaining
    */
 
-  off(type, callback) {
+  off: function(type, callback) {
     debug('off', type, callback);
     if (this._callbacks) {
       switch (arguments.length) {
@@ -88,7 +88,7 @@ Emitter.prototype = {
    * @return {this} for chaining
    */
 
-  emit(type, data) {
+  emit: function(type, data) {
     debug('emit', type, data);
     if (this._callbacks) {
       var fns = this._callbacks[type] || [];
@@ -98,3 +98,7 @@ Emitter.prototype = {
     return this;
   }
 };
+
+var p = Emitter.prototype;
+p['off'] = p.off;
+p['on'] = p.on;

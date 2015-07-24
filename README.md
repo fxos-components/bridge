@@ -32,7 +32,7 @@ C. [Copy/paste](https://raw.githubusercontent.com/gaia-components/threads/master
 Window: `<script src="threads.js">`<br/>
 Worker: `importScripts('threads.js')`
 
-> When possible use lighter `thread-client.js` or `threads-service.js`
+> When possible use lighter `client.js` or `service.js`
 
 <h2 class="jsdoc-hidden">Documentation</h2>
 <a class="jsdoc-hidden" href="https://gaia-components.github.io/threads/docs/out/index.html">View documentation</a>

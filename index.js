@@ -1,6 +1,6 @@
 
 module.exports = {
-  service: require('./lib/service'),
-  client: require('./lib/client'),
-  _message: require('./lib/message')
+  service: require('./src/service'),
+  client: require('./src/client'),
+  _message: require('./src/message')
 };

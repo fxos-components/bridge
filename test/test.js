@@ -2,7 +2,7 @@
 /*jshint esnext:true, maxlen:false*/
 
 suite('end-to-end', function() {
-  var Message = threads._message.Message;
+  var Message = threads._m.Message;
   var service = threads.service;
   var client = threads.client;
   var endpoints = [];

@@ -35,6 +35,7 @@ var debug = 0 ? function(arg1, ...args) {
 /**
  * Initialize a new `Message`
  *
+ * @constructor
  * @class Message
  * @borrows Emitter#on as #on
  * @borrows Emitter#off as #off
@@ -83,7 +84,7 @@ Message.prototype = {
     return this;
   },
 
-  set(key, value) {
+  set: function(key, value) {
     debug('set', key, value);
     if (typeof key == 'object') Object.assign(this, key);
     else this[key] = value;
@@ -105,7 +106,12 @@ Message.prototype = {
     this.defaultPrevented = true;
   },
 
-  send(endpoint) {
+  /**
+   * Send the message to an endpoint.
+   * @param  {(Iframe|Window|Worker|MessagePort)} endpoint
+   * @return {Promise}
+   */
+  send: function(endpoint) {
     debug('send', this.type);
     if (this.sent) throw error(1);
     var serialized = this.serialize();
@@ -159,7 +165,23 @@ Message.prototype = {
     this.listeners = [];
   },
 
-  cancel() {
+  /**
+   * Cancel a pending Message.
+   *
+   * @example
+   *
+   * var msg = message('foo')
+   *
+   * msg.send(new Worker('my-worker.js'))
+   *   .then(response => {
+   *     // this will never run
+   *   })
+   *
+   * msg.cancel();
+   *
+   * @return {[type]} [description]
+   */
+  cancel: function() {
     this.teardown();
     this.cancelled = true;
     this.emit('cancel');
@@ -176,7 +198,7 @@ Message.prototype = {
    * @param  {*} [result]
    * @public
    */
-  respond(result) {
+  respond: function(result) {
     debug('respond', result);
 
     if (this.hasResponded) throw error(2);
@@ -237,7 +259,7 @@ Message.prototype = {
    * @param  {(HTMLIframeElement|MessagePort|Window)} endpoint
    * @public
    */
-  forward(endpoint) {
+  forward: function(endpoint) {
     debug('forward');
     return this
       .set('silentTimeout', true)
@@ -248,19 +270,29 @@ Message.prototype = {
   onResponse(e) {
     debug('on response', e.data);
     var deferred = this._responded;
-    this.response = e.data.response;
-    this.response.event = e;
+    var response = e.data.response;
+    var type = response.type;
+    var value = type == 'reject'
+      ? response.value
+      : response;
 
+    response.event = e;
+    this.response = response;
     this.teardown();
 
-    switch (this.response.type) {
-      case 'resolve': deferred.resolve(this.response); break;
-      case 'reject': deferred.reject(this.response.value);
-    }
-
-    this.emit('response', this.response);
+    deferred[this.response.type](value);
+    this.emit('response', response);
   }
 };
+
+var mp = Message.prototype;
+mp['forward'] = mp.forward;
+mp['respond'] = mp.respond;
+mp['preventDefault'] = mp.preventDefault;
+mp['cancel'] = mp.cancel;
+mp['send'] = mp.send;
+mp['set'] = mp.set;
+
 
 // Mixin Emitter methods
 Emitter(Message.prototype);
@@ -268,6 +300,7 @@ Emitter(Message.prototype);
 /**
  * Initialize a new `Receiver`.
  *
+ * @constructor
  * @class Receiver
  * @extends Emitter
  * @param {String} name - corresponds to `Message.recipient`
@@ -276,8 +309,8 @@ function Receiver(name) {
   this.name = name;
   this.ports = new Set();
   this.onMessage = this.onMessage.bind(this);
-  this.listen = this.listen.bind(this);
-  this.unlisten = this.unlisten.bind(this);
+  this['listen'] = this['listen'].bind(this);
+  this['unlisten'] = this['unlisten'].bind(this);
   debug('receiver initialized', name);
 }
 
@@ -301,7 +334,7 @@ Receiver.prototype = {
    * BroadcastChannel|Window|Object)} [thing]
    * @public
    */
-  listen(thing) {
+  listen: function(thing) {
     debug('listen');
     var _port = createPort(thing || self, { receiver: true });
     if (this.ports.has(_port)) return;
@@ -316,7 +349,7 @@ Receiver.prototype = {
    *
    * @public
    */
-  unlisten() {
+  unlisten: function() {
     debug('unlisten');
     this.ports.forEach(port => {
       port.removeListener(this.onMessage, this.unlisten);
@@ -352,16 +385,28 @@ Receiver.prototype = {
       || this.name == '*';
   },
 
-  destroy() {
+  destroy: function() {
     this.unlisten();
     delete this.name;
     return this;
   }
 };
 
+var rp = Receiver.prototype;
+rp['listen'] = rp.listen;
+rp['unlisten'] = rp.unlisten;
+rp['destroy'] = rp.destroy;
+
 // Mixin Emitter methods
 Emitter(Receiver.prototype);
 
+/**
+ * Creates new `Error` from registery.
+ *
+ * @param  {Number} id Error Id
+ * @return {Error}
+ * @private
+ */
 function error(id) {
   return new Error({
     1: '.send() can only be called once',

@@ -21,7 +21,7 @@ module.exports = function(config) {
 
     files: [
       'threads.js',
-      'lib/plugins/stream/*.js',
+      'src/plugins/stream/*.js',
       { pattern: 'test/lib/*', included: false },
       'test/test.js',
       'test/message.test.js',

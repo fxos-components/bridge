@@ -2,7 +2,7 @@
 /*jshint esnext:true, maxlen:false*/
 
 suite('Message', function() {
-  var message = threads._message;
+  var message = threads._m;
   var receivers = [];
   var iframe;
   var thread;
@@ -24,7 +24,7 @@ suite('Message', function() {
     this.dom.remove();
   });
 
-  suite('Message#send()', function() {
+  suite('Message#send() >>', function() {
     test('it responds', function(done) {
       message('test-message')
         .send(iframe)
@@ -106,7 +106,7 @@ suite('Message', function() {
         .catch(done);
     });
 
-    suite('cancelling', function() {
+    suite('cancelling >>', function() {
       test('it responds', function(done) {
         var spy = sinon.spy();
         var m1 = message('test-message');
@@ -154,7 +154,7 @@ suite('Message', function() {
       });
     });
 
-    suite('internal', function() {
+    suite('internal >>', function() {
       var receiver;
 
       setup(function() {
@@ -177,7 +177,7 @@ suite('Message', function() {
       });
     });
 
-    suite('forwarding', function() {
+    suite('forwarding >>', function() {
       var receiver;
 
       teardown(function() {
