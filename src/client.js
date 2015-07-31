@@ -61,7 +61,7 @@ function Client(service, endpoint) {
   this.pending = new Set();
 
   this.receiver = message.receiver(this.id)
-    .on('_broadcast', this.onBroadcast.bind(this));
+    .on('_push', this.onPush.bind(this));
 
   debug('initialized', service);
 }
@@ -109,8 +109,8 @@ Client.prototype = {
           delete this.channel;
         }
 
-        // Begin listening so that Clients can respond
-        // to push style messages like .broadcast().
+        // Begin listening so that Clients can
+        // respond to service pushed messages
         this.receiver.listen(this.port);
       });
   },
@@ -189,9 +189,8 @@ Client.prototype = {
    */
   plugin: function(fn) {
     fn(this, {
-      message: message,
-      Emitter: Emitter,
-      uuid: uuid
+      'Emitter': Emitter,
+      'uuid': uuid
     });
 
     return this;
@@ -210,7 +209,7 @@ Client.prototype = {
   message(type) {
     debug('create message', type);
     var msg = message(type)
-      .set('endpoint', this.port)
+      .set('port', this.port)
       .on('response', () => this.pending.delete(msg))
       .on('cancel', () => this.pending.delete(msg));
 
@@ -245,14 +244,14 @@ Client.prototype = {
   },
 
   /**
-   * Emits a event when a 'broadcast'
-   * Message is recieved from the Service.
+   * Emits a event when a 'push' Message
+   * is recieved from the Service.
    *
    * @private
-   * @param  {Message} message The broadcast message
+   * @param  {Message} message The pushed message
    */
-  onBroadcast(message) {
-    debug('on broadcast', message.data);
+  onPush(message) {
+    debug('on push', message.data);
     this._emit(message.data.type, message.data.data);
   },
 
@@ -313,7 +312,7 @@ Client.prototype = {
 };
 
 /**
- * Listen to a Service .broadcast().
+ * Listen to a Service .broadcast() or .push().
  *
  * Services get notified whenever a Client
  * starts listening to a particular event.
