@@ -121,29 +121,58 @@ Service.prototype.method = function(name, fn) {
  * @return {this}
  */
 Service.prototype.broadcast = function(type, data, only) {
-  debug('broadcast', type, data, only, self.constructor.name);
-  var msgData = {
-    type: type,
-    data: data
-  };
+  debug('broadcast', type, data, only);
 
   this.eachClient(client => {
     if (only && !~only.indexOf(client.id)) return;
-    debug('broadcast to', client.id);
-    message('_broadcast')
-      .set({
-        recipient: client.id,
-        noRespond: true,
-        data: msgData
-      })
-      .send(client.endpoint);
+    debug('broadcasting to', client.id);
+    this.push(type, data, client.id, { noRespond: true });
   });
 
   return this;
 };
 
+/**
+ * Push message to a single connected Client.
+ *
+ * @example
+ *
+ * client.on('my-event', data => ...)
+ *
+ * ...
+ *
+ * service.push('my-event', { some: data}, clientId)
+ *   .then(() => console.log('sent'));
+ *
+ * @public
+ * @param  {String} type
+ * @param  {Object} data
+ * @param  {String} clientId The Id of the Client to push to
+ * @param  {Object} options Optional parameters
+ * @param  {Boolean} options.noResponse Tell the Client not to respond
+ *   (Promise resolves instantly)
+ * @return {Promise}
+ */
+Service.prototype.push = function(type, data, clientId, options) {
+  var noRespond = options && options.noRespond;
+  var client = this.getClient(clientId);
+  return message('_push')
+    .set({
+      recipient: clientId,
+      noRespond: noRespond,
+      data: {
+        type: type,
+        data: data
+      }
+    }).send(client.port);
+};
+
 Service.prototype.eachClient = function(fn) {
   for (var id in this.clients) fn(this.clients[id]);
+};
+
+Service.prototype.getClient = function(id) {
+  return this.clients[id];
 };
 
 /**
@@ -174,12 +203,12 @@ Service.prototype.onConnect = function(message) {
   // a channel, update the source port
   // so response message goes directly.
   if (channel) {
-    message.setSource(channel);
+    message.setSourcePort(channel);
     this.listen(channel);
     channel.start();
   }
 
-  this.addClient(clientId, message.source);
+  this.addClient(clientId, message.sourcePort);
   message.respond();
 
   this.emit('connected', clientId);
@@ -248,10 +277,10 @@ Service.prototype.onOff = function(message) {
   this.emit('off', message.data);
 };
 
-Service.prototype.addClient = function(id, endpoint) {
+Service.prototype.addClient = function(id, port) {
   this.clients[id] = {
     id: id,
-    endpoint: endpoint
+    port: port
   };
 };
 
@@ -266,11 +295,7 @@ Service.prototype.removeClient = function(id) {
  * @public
  */
 Service.prototype.plugin = function(fn) {
-  fn(this, {
-    message: message,
-    uuid: uuid
-  });
-
+  fn(this, { 'uuid': uuid });
   return this;
 };
 
@@ -286,7 +311,7 @@ Service.prototype.disconnect = function(client) {
       recipient: client.id,
       noRespond: true
     })
-    .send(client.endpoint);
+    .send(client.port);
 };
 
 /**

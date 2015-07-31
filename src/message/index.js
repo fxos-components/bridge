@@ -8,7 +8,7 @@
 var createPort = require('./port-adaptors');
 var Emitter = require('../emitter');
 var utils = require('../utils');
-var deferred = utils.deferred;
+var defer = utils.deferred;
 var uuid = utils.uuid;
 
 /**
@@ -45,6 +45,7 @@ function Message(type) {
   this.cancelled = false;
   this._timeout = null;
   this.listeners = [];
+  this.deferred = defer();
   this.onMessage = this.onMessage.bind(this);
   this.onTimeout = this.onTimeout.bind(this);
   if (typeof type === 'object') this.setupInbound(type);
@@ -68,7 +69,7 @@ Message.prototype = {
 
     // When an Endpoint is created from an event
     // target we know it's ready to recieve messages.
-    this.setSource(e.source || e.target);
+    this.setSourcePort(e.source || e.target);
 
     // Keep a reference to the MessageEvent
     this.event = e;
@@ -77,9 +78,9 @@ Message.prototype = {
     Object.assign(this, e.data);
   },
 
-  setSource(endpoint) {
+  setSourcePort(endpoint) {
     debug('set source', endpoint.constructor.name);
-    this.source = createPort(endpoint, { ready: true });
+    this.sourcePort = createPort(endpoint, { ready: true });
     return this;
   },
 
@@ -116,20 +117,21 @@ Message.prototype = {
     var serialized = this.serialize();
     var expectsResponse = !this.noRespond;
 
-    this._responded = deferred();
-    this.responded = this._responded.promise;
-    this.port = createPort(endpoint || this.endpoint);
+    // A port is resolved from either a predefined
+    // port, or an endpoint given as first argument
+    this.port = endpoint ? createPort(endpoint) : this.port;
+    if (!this.port) throw error(3);
 
+    // If we're expecting a response listen
+    // on the port else resolve promise instantly
     if (expectsResponse) {
       this.listen(this.port);
       this._timeout = setTimeout(this.onTimeout, this.timeout);
-    } else {
-      this._responded.resolve();
-    }
+    } else this.deferred.resolve();
 
     this.port.postMessage(serialized, this.getTransfer());
-    debug('sent', serialized, this.responded);
-    return expectsResponse ? this.responded : Promise.resolve();
+    debug('sent', serialized);
+    return this.deferred.promise;
   },
 
   getTransfer() {
@@ -146,7 +148,7 @@ Message.prototype = {
 
   onTimeout() {
     debug('response timeout', this.type);
-    if (!this.silentTimeout) this._responded.reject('no response');
+    if (!this.silentTimeout) this.deferred.reject('no response');
     this.teardown();
   },
 
@@ -194,17 +196,24 @@ Message.prototype = {
   /**
    * Respond to a message.
    *
-   * @param  {*} [result]
+   * @example
+   *
+   * receiver.on('hello', message => {
+   *   message.respond('world');
+   * });
+   *
    * @public
+   * @param  {*} [result] Data to send back with the response
    */
   respond: function(result) {
     debug('respond', result);
 
     if (this.hasResponded) throw error(2);
-    if (!this.source) return;
+    if (!this.sourcePort) return;
     if (this.noRespond) return;
 
     var self = this;
+    this.hasResponded = true;
 
     // Repsond with rejection when result is an `Error`
     if (result instanceof Error) reject(result);
@@ -217,8 +226,6 @@ Message.prototype = {
     Promise.resolve(result)
       .then(resolve, reject)
       .catch(reject);
-
-    self.hasResponded = true;
 
     function resolve(value) {
       debug('resolve', value);
@@ -239,7 +246,7 @@ Message.prototype = {
 
     function respond(response) {
       self.response = response;
-      self.source.postMessage({
+      self.sourcePort.postMessage({
         id: self.id,
         response: response
       }, self.transfer);
@@ -269,7 +276,6 @@ Message.prototype = {
 
   onResponse(e) {
     debug('on response', e.data);
-    var deferred = this._responded;
     var response = e.data.response;
     var type = response.type;
     var value = type == 'reject'
@@ -280,11 +286,13 @@ Message.prototype = {
     this.response = response;
     this.teardown();
 
-    deferred[this.response.type](value);
+    this.deferred[this.response.type](value);
     this.emit('response', response);
   }
 };
 
+// Prevent ClosureCompiler
+// mangling public methods
 var mp = Message.prototype;
 mp['forward'] = mp.forward;
 mp['respond'] = mp.respond;
@@ -292,7 +300,6 @@ mp['preventDefault'] = mp.preventDefault;
 mp['cancel'] = mp.cancel;
 mp['send'] = mp.send;
 mp['set'] = mp.set;
-
 
 // Mixin Emitter methods
 Emitter(Message.prototype);
@@ -409,6 +416,7 @@ Emitter(Receiver.prototype);
 function error(id) {
   return new Error({
     1: '.send() can only be called once',
-    2: 'response already sent for this message'
+    2: 'response already sent for this message',
+    3: 'a port must be defined',
   }[id]);
 }
