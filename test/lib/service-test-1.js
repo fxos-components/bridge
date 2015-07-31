@@ -19,6 +19,22 @@ var service2 = threads.service('service-2')
     return self;
   })
 
+  .method('rejectWithoutMessage', () => {
+    return new Promise((resolve, reject) => {
+      reject();
+    });
+  })
+
+  .method('rejectWithMessage', () => {
+    return new Promise((resolve, reject) => {
+      reject('my error');
+    });
+  })
+
+  .method('throwException', () => {
+    throw new Error('my error');
+  })
+
   .on('on', data => {
     service2.broadcast('client-listening', data);
   })

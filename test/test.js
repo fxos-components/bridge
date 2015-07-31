@@ -378,6 +378,33 @@ suite('end-to-end', function() {
         done();
       });
     });
+
+    test('promise.reject without message', function(done) {
+      var endpoint = createEndpoint('service-test-1-worker.js', 'worker');
+      var myClient = createClient('service-2', endpoint);
+      myClient.method('rejectWithoutMessage').catch(function(err) {
+        assert.isUndefined(err);
+        done();
+      }).catch(done);
+    });
+
+    test('promise.reject with message', function(done) {
+      var endpoint = createEndpoint('service-test-1-worker.js', 'worker');
+      var myClient = createClient('service-2', endpoint);
+      myClient.method('rejectWithMessage').catch(function(err) {
+        assert.equal(err, 'my error');
+        done();
+      }).catch(done);
+    });
+
+    test('thrown exception', function(done) {
+      var endpoint = createEndpoint('service-test-1-worker.js', 'worker');
+      var myClient = createClient('service-2', endpoint);
+      myClient.method('throwException').catch(function(err) {
+        assert.equal(err, 'my error');
+        done();
+      });
+    });
   });
 
   suite('BroadcastChannel >>', function() {

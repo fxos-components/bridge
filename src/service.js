@@ -219,10 +219,13 @@ Service.prototype.onMethod = function(message) {
 
   var method = message.data;
   var name = method.name;
+  var result;
 
   var fn = this.methods[name];
   if (!fn) throw error(4, name);
-  message.respond(fn.apply(this, method.args));
+  try { result = fn.apply(this, method.args); }
+  catch (err) { result = err; }
+  message.respond(result);
 };
 
 /**

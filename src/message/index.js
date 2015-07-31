@@ -229,10 +229,11 @@ Message.prototype = {
     }
 
     function reject(err) {
-      debug('reject', err.message);
+      var msg = err && err.message || err;
+      debug('reject', msg);
       respond({
         type: 'reject',
-        value: err.message || err
+        value: msg
       });
     }
 
