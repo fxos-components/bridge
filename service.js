@@ -556,6 +556,7 @@ var debug = 0 ? function(arg1, ...args) {
  * @return {[type]}         [description]
  */
 module.exports = function create(target, options) {
+  if (!target) throw error(1);
   if (isEndpoint(target)) return target;
   var type = target.constructor.name;
   var CustomAdaptor = adaptors[type];
@@ -574,6 +575,7 @@ function PortAdaptor(target) {
 }
 
 var PortAdaptorProto = PortAdaptor.prototype = {
+  constructor: PortAdaptor,
   addListener(callback) { on(this.target, MSG, callback); },
   removeListener(callback) { off(this.target, MSG, callback); },
   postMessage(data, transfer) { this.target.postMessage(data, transfer); }
@@ -746,13 +748,25 @@ var windowReady = (function() {
  */
 
 function isEndpoint(thing) {
-  return !!thing.addListener;
+  return !!(thing && thing.addListener);
 }
 
 // Shorthand
 function on(target, name, fn) { target.addEventListener(name, fn); }
 function off(target, name, fn) { target.removeEventListener(name, fn); }
 
+/**
+ * Creates new `Error` from registery.
+ *
+ * @param  {Number} id Error Id
+ * @return {Error}
+ * @private
+ */
+function error(id) {
+  return new Error({
+    1: 'target is undefined'
+  }[id]);
+}
 },{"../utils":6}],5:[function(require,module,exports){
 'use strict';
 

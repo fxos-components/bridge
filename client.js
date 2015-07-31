@@ -57,14 +57,19 @@ function Client(service, endpoint) {
   if (!(this instanceof Client)) return new Client(service, endpoint);
 
   this.id = uuid();
-  this.setEndpoint(endpoint);
   this.service = service;
+
+  // Keep a reference to the original endpoint
+  // so that it's not garbage collected (Workers)
+  this.endpoint = endpoint || this.endpoint;
+  if (!this.endpoint) throw error(1);
+
+  this.setPort(this.endpoint);
   this.pending = new Set();
 
   this.receiver = message.receiver(this.id)
     .on('_broadcast', this.onBroadcast.bind(this));
 
-  if (!this.endpoint) throw error(1);
   debug('initialized', service);
 }
 
@@ -105,7 +110,7 @@ Client.prototype = {
         // update the endpoint so that all
         // subsequent messaging uses this channel.
         var usingChannel = response.event.target === this.channel;
-        if (usingChannel) this.setEndpoint(this.channel);
+        if (usingChannel) this.setPort(this.channel);
         else {
           this.channel.close();
           delete this.channel;
@@ -113,7 +118,7 @@ Client.prototype = {
 
         // Begin listening so that Clients can respond
         // to push style messages like .broadcast().
-        this.receiver.listen(this.endpoint);
+        this.receiver.listen(this.port);
       });
   },
 
@@ -177,7 +182,6 @@ Client.prototype = {
       .then(response => response.value);
   },
 
-
   /**
    * Use a plugin with this Client.
    * See {@tutorial Writing plugins}.
@@ -213,7 +217,7 @@ Client.prototype = {
   message(type) {
     debug('create message', type);
     var msg = message(type)
-      .set('endpoint', this.endpoint)
+      .set('endpoint', this.port)
       .on('response', () => this.pending.delete(msg))
       .on('cancel', () => this.pending.delete(msg));
 
@@ -259,19 +263,27 @@ Client.prototype = {
     this._emit(message.data.type, message.data.data);
   },
 
+  // Needs testing!
   onDisconnected() {
     delete this.connected;
     this.pendingResponded().then(() => {
       debug('disconnected');
       if (this.channel) this.channel.close();
-      this.emit('disconnected');
+      this._emit('disconnected');
     });
   },
 
-  setEndpoint(endpoint) {
-    debug('set endpoint');
-    if (endpoint) this.endpoint = createPort(endpoint);
-    return this;
+  /**
+   * Set the port which all messages
+   * will be sent over. This can differ
+   * to the endpoint if we successfully
+   * upgrade transport to MessageChannel.
+   *
+   * @param {(Iframe|Worker|MessagePort|BroadcastChannel|Window)} endpoint
+   */
+  setPort(endpoint) {
+    debug('set port');
+    this.port = createPort(endpoint);
   },
 
   /**
@@ -293,6 +305,12 @@ Client.prototype = {
         this.destroyed = true;
         this.receiver.destroy();
         this._off();
+
+        // Wipe references
+        this.port
+          = this.endpoint
+          = this.receiver
+          = null;
       });
   },
 
@@ -328,7 +346,7 @@ Client.prototype.on = function(name, fn) {
         name: name,
         clientId: this.id
       })
-      .send(this.endpoint);
+      .send(this.port);
   });
 
   return this;
@@ -358,7 +376,7 @@ Client.prototype.off = function(name, fn) {
         name: name,
         clientId: this.id
       })
-      .send(this.endpoint);
+      .send(this.port);
   });
 
   return this;
@@ -939,6 +957,7 @@ var debug = 0 ? function(arg1, ...args) {
  * @return {[type]}         [description]
  */
 module.exports = function create(target, options) {
+  if (!target) throw error(1);
   if (isEndpoint(target)) return target;
   var type = target.constructor.name;
   var CustomAdaptor = adaptors[type];
@@ -957,6 +976,7 @@ function PortAdaptor(target) {
 }
 
 var PortAdaptorProto = PortAdaptor.prototype = {
+  constructor: PortAdaptor,
   addListener(callback) { on(this.target, MSG, callback); },
   removeListener(callback) { off(this.target, MSG, callback); },
   postMessage(data, transfer) { this.target.postMessage(data, transfer); }
@@ -1129,13 +1149,25 @@ var windowReady = (function() {
  */
 
 function isEndpoint(thing) {
-  return !!thing.addListener;
+  return !!(thing && thing.addListener);
 }
 
 // Shorthand
 function on(target, name, fn) { target.addEventListener(name, fn); }
 function off(target, name, fn) { target.removeEventListener(name, fn); }
 
+/**
+ * Creates new `Error` from registery.
+ *
+ * @param  {Number} id Error Id
+ * @return {Error}
+ * @private
+ */
+function error(id) {
+  return new Error({
+    1: 'target is undefined'
+  }[id]);
+}
 },{"../utils":6}],6:[function(require,module,exports){
 'use strict';
 

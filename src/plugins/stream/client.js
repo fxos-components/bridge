@@ -30,7 +30,7 @@ module.exports = (client, utils) => {
     this.connect().then(() => {
       debug('stream', method, args);
 
-      utils.message('stream')
+      client.message('stream')
         .set('data', {
           id: stream.id,
           clientId: client.id,
@@ -38,7 +38,7 @@ module.exports = (client, utils) => {
           args: args
         })
 
-        .send(client.endpoint)
+        .send()
         .then(() => stream._connected.resolve())
         .catch(err => {
           onStreamEvent({
@@ -91,8 +91,7 @@ module.exports = (client, utils) => {
 
 function ClientStream(client, utils) {
   this.id = utils.uuid();
-  this.endpoint = client.endpoint;
-  this.message = utils.message;
+  this.client = client;
   this.emitter = new utils.Emitter();
   this.emitter.on('close', this.onClose.bind(this));
   this.emitter.on('abort', this.onAbort.bind(this));
@@ -152,9 +151,9 @@ ClientStream.prototype = {
         reason: reason
       };
 
-      this.message('streamcancel')
+      this.client.message('streamcancel')
         .set('data', data)
-        .send(this.endpoint)
+        .send()
         .then(result => {
           debug('cancelled', result);
           this.emitter.emit('cancel');

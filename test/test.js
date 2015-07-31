@@ -54,7 +54,6 @@ suite('end-to-end', function() {
       });
     });
 
-    // Need to fix message forwarding in shared-worker.html
     test('shared worker', (done) => {
       var start = performance.now();
       var iframe = iframeService('shared-worker.html');
@@ -80,13 +79,24 @@ suite('end-to-end', function() {
 
   suite('endpoint >>', () => {
     test('it works when an endpoint being set on the prototype', done => {
-      worker = createEndpoint('service-test-1-worker.js', 'worker');
-      client.prototype.endpoint = worker;
+      var endpoint = createEndpoint('service-test-1-worker.js', 'worker');
+      client.prototype.endpoint = endpoint;
       var myClient = createClient('service-1');
       myClient.method('method-1', 'my-arg').then(result => {
         assert.equal(result, 'my-arg');
+        delete client.prototype.endpoint;
         done();
-      }).catch(done, done);
+      }).catch(done);
+    });
+
+    test('a reference is always kept to the original endpoint', function(done) {
+      var endpoint = createEndpoint('service-test-1-worker.js', 'worker');
+      var myClient = createClient('service-1', endpoint);
+      myClient.method('method-1', 'my-arg').then(result => {
+        assert.equal(endpoint, myClient.endpoint);
+        assert.notEqual(myClient.endpoint, myClient.port.target);
+        done();
+      }).catch(done);
     });
   });
 
