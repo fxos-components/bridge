@@ -249,16 +249,12 @@ suite('Message', function() {
       test('it can send messages', function(done) {
         bc = new BroadcastChannel('send-test');
 
-        // setTimeout(() => {
-
         message('ping')
           .send(bc)
           .then(response => {
             assert.equal(response.value, 'pong');
             done();
           });
-
-        // }, 300);
       });
 
       test('it can recieve messages', function(done) {

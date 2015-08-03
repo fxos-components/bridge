@@ -206,7 +206,7 @@ suite('Client()', function() {
         .catch(done);
     });
 
-    test.only('the default message timeout can be overriden', function(done) {
+    test('the default message timeout can be overriden', function(done) {
       var then = Date.now();
 
       myClient = client({

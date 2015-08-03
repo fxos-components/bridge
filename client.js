@@ -1130,6 +1130,11 @@ var adaptors = {
     };
   },
 
+  SharedWorker(worker) {
+    worker.port.start();
+    return new PortAdaptor(worker.port);
+  },
+
   SharedWorkerGlobalScope() {
     var ports = [];
 

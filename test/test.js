@@ -55,11 +55,20 @@ suite('end-to-end', function() {
     });
 
     test('shared worker', (done) => {
-      var start = performance.now();
-      var iframe = iframeService('shared-worker.html');
-      var myClient = createClient('service-1', iframe);
+      var sharedworker = createEndpoint('service-test-1-worker.js', 'sharedworker');
+      var myClient = createClient('service-1', sharedworker);
       myClient.method('method-1', 'my-arg').then(result => {
-        console.log('shared-worker', performance.now() - start);
+        assert.equal(result, 'my-arg');
+        done();
+      }).catch(done);
+    });
+
+    test('shared worker port', function(done) {
+      var port = createEndpoint('service-test-1-worker.js', 'sharedworker').port;
+      port.start();
+
+      var myClient = createClient('service-1', port);
+      myClient.method('method-1', 'my-arg').then(result => {
         assert.equal(result, 'my-arg');
         done();
       }).catch(done);
@@ -489,6 +498,7 @@ suite('end-to-end', function() {
   function createEndpoint(file, type) {
     var path = '/base/test/lib/' + file;
     var endpoint = create(type);
+
     endpoints.push(endpoint);
     return endpoint;
 
@@ -497,6 +507,7 @@ suite('end-to-end', function() {
         case 'window': return window.open(path);
         case 'iframe': return iframeService(file);
         case 'worker': return new Worker(path);
+        case 'sharedworker': return new SharedWorker(path, String(Date.now()));
       }
     }
   }
