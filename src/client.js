@@ -112,6 +112,21 @@ Client.prototype = {
         // Begin listening so that Clients can
         // respond to service pushed messages
         this.receiver.listen(this.port);
+      })
+
+      // In the event of message timeout we
+      // upgrade the message to something more
+      // informative. console.error() is used to
+      // makesure the message is seen even when
+      // the user hasn't registered a .catch() handler.
+      .catch(err => {
+        var msg = err && err.message;
+        if (msg == 'timeout') {
+          err = error(2, this.service);
+          console.error(err.message);
+        }
+
+        throw err;
       });
   },
 
@@ -156,13 +171,11 @@ Client.prototype = {
    * @param  {...*} [args] Arguments to send
    * @return {Promise}
    */
-  method: function(name) {
-    var args = [].slice.call(arguments, 1);
-
+  method: function(name, ...args) {
     return this.connect()
       .then(() => {
         debug('method', name);
-        return this.message('_method', '[Client]')
+        return this.message('_method')
           .set({
             recipient: this.service,
             data: {
@@ -172,7 +185,24 @@ Client.prototype = {
           })
           .send();
       })
-      .then(response => response.value);
+
+      // Only send back the response value
+      .then(response => response.value)
+
+      // In the event of message timeout we
+      // upgrade the message to something more
+      // informative. console.error() is used to
+      // make sure the message is seen even when
+      // the user hasn't registered a .catch() handler.
+      .catch(err => {
+        var msg = err && err.message;
+        if (msg == 'timeout') {
+          err = error(3, name);
+          console.error(err.message);
+        }
+
+        throw err;
+      });
   },
 
   /**
@@ -391,8 +421,12 @@ cp['off'] = cp.off;
  * @private
  */
 
-function error(id) {
+function error(id, ...args) {
+  /*jshint maxlen:false*/
+  var help = 'Either the target endpoint is not alive or the Service is not `.listen()`ing.';
   return new Error({
-    1: 'an endpoint must be defined'
+    1: 'an endpoint must be defined',
+    2: `Unable to establish a connection with "${args[0]}". ${help}`,
+    3: `Method "${args[0]}" didn't get a response. ${help}`
   }[id]);
 }

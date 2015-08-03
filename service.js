@@ -261,7 +261,7 @@ Message.prototype = {
 
   onTimeout() {
     debug('response timeout', this.type);
-    if (!this.silentTimeout) this.deferred.reject('no response');
+    if (!this.silentTimeout) this.deferred.reject(error(4));
     this.teardown();
   },
 
@@ -520,17 +520,18 @@ rp['destroy'] = rp.destroy;
 Emitter(Receiver.prototype);
 
 /**
- * Creates new `Error` from registery.
+ * Creates new `Error` from registry.
  *
  * @param  {Number} id Error Id
  * @return {Error}
  * @private
  */
-function error(id) {
+function error(id, ...args) {
   return new Error({
     1: '.send() can only be called once',
     2: 'response already sent for this message',
     3: 'a port must be defined',
+    4: 'timeout'
   }[id]);
 }
 

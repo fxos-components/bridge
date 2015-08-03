@@ -54,8 +54,8 @@ suite('Message', function() {
       message('does-not-respond')
         .set('timeout', 300)
         .send(iframe)
-        .catch(response => {
-          assert.equal(response, 'no response');
+        .catch(err => {
+          assert.equal(err.message, 'timeout');
           done();
         }).catch(done);
     });
@@ -214,8 +214,8 @@ suite('Message', function() {
         myMessage
           .set('timeout', 300)
           .send(window)
-          .catch(e => {
-            assert.equal(e, 'no response');
+          .catch(err => {
+            assert.equal(err.message, 'timeout');
             setTimeout(() => done(), 100);
           });
       });
