@@ -43,14 +43,23 @@ var debug = 0 ? function(arg1, ...args) {
  * @constructor
  * @param {String} service The service name to connect to
  * @param {(Iframe|Worker|MessagePort|BroadcastChannel|Window)} endpoint
+ * @param {Number} [timeout] Override default response timeout
  * The context/thread this service can be found in.
  * @public
  */
-function Client(service, endpoint) {
+function Client(service, endpoint, timeout) {
   if (!(this instanceof Client)) return new Client(service, endpoint);
+
+  // Parameters can be passed as single object
+  if (typeof service == 'object') {
+    timeout = service.timeout;
+    endpoint = service.endpoint;
+    service = service.service;
+  }
 
   this.id = uuid();
   this.service = service;
+  this.timeout = timeout;
 
   // Keep a reference to the original endpoint
   // so that it's not garbage collected (Workers)
@@ -238,12 +247,15 @@ Client.prototype = {
    */
   message(type) {
     debug('create message', type);
+
     var msg = message(type)
       .set('port', this.port)
       .on('response', () => this.pending.delete(msg))
       .on('cancel', () => this.pending.delete(msg));
 
+    if (this.timeout) msg.set('timeout', this.timeout);
     this.pending.add(msg);
+
     return msg;
   },
 

@@ -40,7 +40,7 @@ suite('end-to-end', function() {
         console.log('worker', performance.now() - start);
         assert.equal(result, 'my-arg');
         done();
-      }).catch(done, done);
+      }).catch(done);
     });
 
     test('iframe', done => {

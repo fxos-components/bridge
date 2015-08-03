@@ -205,6 +205,25 @@ suite('Client()', function() {
         })
         .catch(done);
     });
+
+    test.only('the default message timeout can be overriden', function(done) {
+      var then = Date.now();
+
+      myClient = client({
+        service: 'some-service',
+        endpoint: this.endpoint,
+        timeout: 300
+      });
+
+      myClient.method('someMethod1')
+        .then(result => done('should not run'))
+        .catch(err => {
+          assert.ok(Date.now() - then >= 300);
+          assert.ok(Date.now() - then < 1000);
+          done();
+        })
+        .catch(done);
+    });
   });
 
   suite('Client#disconnect()', function() {
