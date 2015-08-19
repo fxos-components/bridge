@@ -1,5 +1,5 @@
-importScripts('../../threads.min.js');
+importScripts('../../bridge.min.js');
 
-threads.service('my-service')
+bridge.service('my-service')
   .method('ping', () => 'pong')
   .listen();

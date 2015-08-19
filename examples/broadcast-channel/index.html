@@ -2,7 +2,7 @@
 <html>
 <head>
   <title>examples/broadcast-channel</title>
-  <script src="../../threads.min.js"></script>
+  <script src="../../bridge.min.js"></script>
 </head>
 <body>
 <iframe src="iframe-service.html"></iframe>
@@ -11,7 +11,7 @@
   var list = document.querySelector('ul');
   new SharedWorker('shared-worker-client.js');
 
-  threads.service('logger')
+  bridge.service('logger')
     .listen()
     .listen(new BroadcastChannel('logger-service-channel'))
     .method('log', text => {

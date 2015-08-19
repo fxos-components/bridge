@@ -1,4 +1,4 @@
-# threads.js [![](https://travis-ci.org/gaia-components/threads.svg)](https://travis-ci.org/gaia-components/threads)
+# bridge.js [![](https://travis-ci.org/gaia-components/bridge.svg)](https://travis-ci.org/gaia-components/bridge)
 
 > Exposes a service between one browser JavaScript context to another.
 
@@ -23,18 +23,18 @@ client.method('greet', 'john').then(value => {
 
 ## Install options
 
-A. `$ npm install gaia-components/threads`<br/>
-B. `$ bower install gaia-components/threads`<br/>
-C. [Copy/paste](https://raw.githubusercontent.com/gaia-components/threads/master/threads.js)
+A. `$ npm install gaia-components/bridge`<br/>
+B. `$ bower install gaia-components/bridge`<br/>
+C. [Copy/paste](https://raw.githubusercontent.com/gaia-components/bridge/master/bridge.js)
 
 ## Usage
 
-Window: `<script src="threads.js">`<br/>
-Worker: `importScripts('threads.js')`
+Window: `<script src="bridge.js">`<br/>
+Worker: `importScripts('bridge.js')`
 
 > When possible use lighter `client.js` or `service.js`
 
 <h2 class="jsdoc-hidden">Documentation</h2>
-<a class="jsdoc-hidden" href="https://gaia-components.github.io/threads/docs/out/index.html">View documentation</a>
+<a class="jsdoc-hidden" href="https://gaia-components.github.io/bridge/docs/out/index.html">View documentation</a>
 
 

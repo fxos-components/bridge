@@ -1,8 +1,8 @@
-/*global threads,assert,suite,setup,teardown,test*/
+/*global bridge,assert,suite,setup,teardown,test*/
 /*jshint esnext:true, maxlen:false*/
 
 suite('Service /', function() {
-  var service = threads.service;
+  var service = bridge.service;
 
   setup(function() {
     this.sinon = sinon.sandbox.create();
@@ -111,7 +111,7 @@ suite('Service /', function() {
 
   // suite('client provided contracts /', function() {
   //   setup(function() {
-  //     _threads.push(threads.create({
+  //     _bridge.push(bridge.create({
   //       src: '/base/test/lib/contracts.js',
   //       type: 'worker'
   //     }));
@@ -131,8 +131,8 @@ suite('Service /', function() {
   //       }
   //     };
 
-  //     clients.push(threads.client('contract-service', {
-  //       thread: _threads[0],
+  //     clients.push(bridge.client('contract-service', {
+  //       thread: _bridge[0],
   //       contract: this.contract
   //     }));
   //   });
@@ -175,12 +175,12 @@ suite('Service /', function() {
 
   // suite('server provided contracts', function() {
   //   setup(function() {
-  //     _threads.push(threads.create({
+  //     _bridge.push(bridge.create({
   //       src: '/base/test/lib/contracts.js',
   //       type: 'worker'
   //     }));
 
-  //     clients.push(threads.client('service-supplied-contract', { thread: _threads[0] }));
+  //     clients.push(bridge.client('service-supplied-contract', { thread: _bridge[0] }));
   //   });
 
   //   test('contract method calls are allowed', function(done) {
@@ -206,14 +206,14 @@ suite('Service /', function() {
   //     var spy2 = sinon.spy();
   //     var spy3 = sinon.spy();
 
-  //     var thread = threads.create({
+  //     var thread = bridge.create({
   //       src: '/base/test/lib/events.js',
   //       type: 'worker'
   //     });
 
-  //     clients.push(threads.client('test-events', { thread: thread }));
-  //     clients.push(threads.client('test-events', { thread: thread }));
-  //     clients.push(threads.client('test-events', { thread: thread }));
+  //     clients.push(bridge.client('test-events', { thread: thread }));
+  //     clients.push(bridge.client('test-events', { thread: thread }));
+  //     clients.push(bridge.client('test-events', { thread: thread }));
 
   //     clients[0].on('eventname', spy1);
   //     clients[1].on('eventname', spy2);
@@ -233,12 +233,12 @@ suite('Service /', function() {
 
   // suite('return values', function() {
   //   setup(function() {
-  //     _threads.push(threads.create({
+  //     _bridge.push(bridge.create({
   //       src: '/base/test/lib/thread.js',
   //       type: 'worker'
   //     }));
 
-  //     clients.push(threads.client('view-server', { thread: _threads[0] }));
+  //     clients.push(bridge.client('view-server', { thread: _bridge[0] }));
   //   });
 
   //   test('returns false', function(done) {

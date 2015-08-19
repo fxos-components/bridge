@@ -1,11 +1,11 @@
-/*global threads,assert,suite,setup,teardown,test*/
+/*global bridge,assert,suite,setup,teardown,test*/
 /*jshint esnext:true, maxlen:false*/
 
 suite('Client()', function() {
-  var message = threads._m;
+  var message = bridge._m;
   var Message = message.Message;
   var Receiver = message.Receiver;
-  var client = threads.client;
+  var client = bridge.client;
   var myClient;
 
   setup(function() {

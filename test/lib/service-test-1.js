@@ -1,5 +1,5 @@
 
-threads.service('service-1')
+bridge.service('service-1')
   .method('method-1', param => {
     return param;
   })
@@ -10,7 +10,7 @@ threads.service('service-1')
 
   .listen();
 
-var service2 = threads.service('service-2')
+var service2 = bridge.service('service-2')
   .method('event-test', param => {
     service2.broadcast('test-event', { some: 'data' });
   })
@@ -45,7 +45,7 @@ var service2 = threads.service('service-2')
 
   .listen();
 
-threads.service('test-streams')
+bridge.service('test-streams')
   .plugin(streamService)
   .stream('test-data', function(stream, type, data) {
     stream.write('1: ' + type + ' ' + data);
@@ -84,7 +84,7 @@ threads.service('test-streams')
 
   .listen();
 
-threads.service('bc-service')
+bridge.service('bc-service')
   .method('ping', arg => {
     return 'pong';
   })

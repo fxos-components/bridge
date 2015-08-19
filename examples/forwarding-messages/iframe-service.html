@@ -1,8 +1,8 @@
-<script src="../../threads.min.js"></script>
+<script src="../../bridge.min.js"></script>
 <script>
   var worker = new Worker('worker-service.js');
 
-  threads.service('*')
+  bridge.service('*')
     .on('message', message => {
       message.preventDefault();
       message.forward(worker);

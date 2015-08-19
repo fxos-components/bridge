@@ -69,7 +69,7 @@ pre { margin: 1rem 0 }
 }
 
 article {
-  /*max-width: 700px;*/
+  margin-bottom: 8rem;
 }
 
 article dl {
@@ -276,7 +276,8 @@ th {
   font-weight: 300;
 }
 
-article > :first-child {
+article > :first-child,
+header > :first-child {
   margin-top: -0.1em
 }
 

@@ -12,15 +12,12 @@ module.exports = function(config) {
 
     customLaunchers: {
       FirefoxLatest: {
-        base: 'FirefoxNightly',
-        prefs: {
-          'dom.webcomponents.enabled': true
-        }
+        base: 'FirefoxNightly'
       }
     },
 
     files: [
-      'threads.js',
+      'bridge.js',
       'src/plugins/stream/*.js',
       { pattern: 'test/lib/*', included: false },
       'test/test.js',

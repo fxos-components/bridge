@@ -7,9 +7,9 @@
       "src-es5/emitter.js"
     ]
   },
-  "repo": "https://github.com/gaia-components/threads",
+  "repo": "https://github.com/gaia-components/bridge",
   "opts": {
-    "name": "threads.js",
+    "name": "bridge.js",
     "readme": "README.md",
     "tutorials": "docs/tutorials",
     "destination": "docs/out",
