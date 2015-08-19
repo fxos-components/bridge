@@ -2,7 +2,7 @@
 <html>
 <head>
   <title>examples/broadcast-channel</title>
-  <script src="../../threads.min.js"></script>
+  <script src="../../bridge.min.js"></script>
   <link rel="stylesheet" href="https://code.cdn.mozilla.net/fonts/fira.css">
   <style>
 
@@ -41,7 +41,7 @@
   var time = document.querySelector('time');
   var worker = new Worker('worker.js');
 
-  threads.client('clock', worker)
+  bridge.client('clock', worker)
     .on('tick', date => render(date));
 
   function render(date) {

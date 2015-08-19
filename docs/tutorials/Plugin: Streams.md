@@ -3,7 +3,7 @@ a way of canceling the action before it is completed. For these cases register
 the action as a `stream()`:
 
 ```js
-threads.service('my-service')
+bridge.service('my-service')
   .plugin(streamsService)
   .stream('myStreamingMethod', function(stream, param) {
     if (param === 'foo') {
@@ -33,7 +33,7 @@ threads.service('my-service')
 ```
 
 ```js
-var client = threads.client('my-service')
+var client = bridge.client('my-service')
   .plugin(streamsClient);
 
 var stream = client.stream('myStreamingMethod', 'foo');

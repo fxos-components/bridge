@@ -1,10 +1,10 @@
-/*global threads*/
+/*global bridge*/
 
-importScripts('../../threads.js');
+importScripts('../../bridge.js');
 
 try {
 
-  threads.service('contract-service')
+  bridge.service('contract-service')
     .method('contractMethod', function(string) {
       return 'conformance: ' + string;
     })
@@ -32,7 +32,7 @@ try {
     }
   };
 
-  threads.service('service-supplied-contract')
+  bridge.service('service-supplied-contract')
     .contract(contract)
     .method('contractMethod', function(string) {
       return 'conformance: ' + string;

@@ -1,10 +1,10 @@
-/*global threads,assert,suite,setup,teardown,sinon,test*/
+/*global bridge,assert,suite,setup,teardown,sinon,test*/
 /*jshint esnext:true, maxlen:false*/
 
 suite('end-to-end', function() {
-  var Message = threads._m.Message;
-  var service = threads.service;
-  var client = threads.client;
+  var Message = bridge._m.Message;
+  var service = bridge.service;
+  var client = bridge.client;
   var endpoints = [];
   var services = [];
   var clients = [];
@@ -443,7 +443,7 @@ suite('end-to-end', function() {
   suite('module support >>', function() {
     test('AMD', function(done) {
       var iframe = iframeService('requirejs-test.html');
-      threads.service('requirejs-test')
+      bridge.service('requirejs-test')
         .listen(iframe)
         .method('ping', function() {
           done();

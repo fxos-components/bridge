@@ -2,14 +2,14 @@
 <html>
 <head>
   <title>examples/forwarding-messages</title>
-  <script src="../../threads.min.js"></script>
+  <script src="../../bridge.min.js"></script>
 </head>
 <body>
 <iframe src="iframe-service.html"></iframe>
 <ul></ul>
 <script>
   var iframe = document.querySelector('iframe');
-  var client = threads.client('my-service', iframe);
+  var client = bridge.client('my-service', iframe);
 
   client.method('ping').then(result => {
     log(result);

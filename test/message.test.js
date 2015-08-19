@@ -1,8 +1,8 @@
-/*global threads,assert,suite,setup,teardown,sinon,test*/
+/*global bridge,assert,suite,setup,teardown,sinon,test*/
 /*jshint esnext:true, maxlen:false*/
 
 suite('Message', function() {
-  var message = threads._m;
+  var message = bridge._m;
   var receivers = [];
   var iframe;
   var thread;

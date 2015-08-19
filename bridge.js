@@ -1,13 +1,13 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 
-var threads = {
+var bridge = {
   'service': require('../src/service'),
   'client': require('../src/client'),
   _m: require('../src/message')
 };
 
-if ((typeof define)[0] != 'u') define([], () => threads);
-else self['threads'] = threads;
+if ((typeof define)[0] != 'u') define([], () => bridge);
+else self['bridge'] = bridge;
 
 },{"../src/client":2,"../src/message":4,"../src/service":6}],2:[function(require,module,exports){
 'use strict';
@@ -50,7 +50,7 @@ var debug = 0 ? function(arg1, ...args) {
  * @example
  *
  * var endpoint = document.querySelector('iframe');
- * var client = threads.client('my-service', endpoint);
+ * var client = bridge.client('my-service', endpoint);
  *
  * @constructor
  * @param {String} service The service name to connect to
@@ -598,6 +598,7 @@ var debug = 0 ? function(arg1, ...args) {
 /**
  * Default response timeout.
  * @type {Number}
+ * @private
  */
 var TIMEOUT = 1000;
 
@@ -1302,7 +1303,7 @@ Service.prototype = Object.create(Receiver.prototype);
  *
  * @example
  *
- * threads.service('my-service')
+ * bridge.service('my-service')
  *   .method('ping', param => 'pong: ' + param)
  *   .listen();
  *
@@ -1337,7 +1338,7 @@ function Service(name) {
  *
  * @example
  *
- * threads.service('my-service')
+ * bridge.service('my-service')
  *
  *   // sync return value
  *   .method('myMethod', function(param) {

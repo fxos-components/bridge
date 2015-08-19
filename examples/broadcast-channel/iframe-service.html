@@ -1,9 +1,9 @@
-<script src="../../threads.min.js"></script>
+<script src="../../bridge.min.js"></script>
 <script>
   var myServiceChannel = new BroadcastChannel('my-service-channel');
-  var logger = threads.client('logger', window.parent);
+  var logger = bridge.client('logger', window.parent);
 
-  threads.service('my-service')
+  bridge.service('my-service')
     .listen(myServiceChannel)
     .method('ping', () => {
       logger.method('log', 'Got \'ping\' request');

@@ -38,7 +38,7 @@ var debug = 0 ? function(arg1, ...args) {
  * @example
  *
  * var endpoint = document.querySelector('iframe');
- * var client = threads.client('my-service', endpoint);
+ * var client = bridge.client('my-service', endpoint);
  *
  * @constructor
  * @param {String} service The service name to connect to

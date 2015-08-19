@@ -1,7 +1,7 @@
-<script src="/base/threads.js"></script>
+<script src="/base/bridge.js"></script>
 <script>
 /*jshint esnext:true*/
-var message = threads._m;
+var message = bridge._m;
 
 message.receiver('message-test-2')
   .on('forwarded-message', message => {

@@ -1,4 +1,4 @@
-/*global threads,assert,suite,setup,teardown,test*/
+/*global bridge,assert,suite,setup,teardown,test*/
 /*jshint esnext:true, maxlen:false*/
 
 suite('ServiceStream /', function() {
@@ -10,7 +10,7 @@ suite('ServiceStream /', function() {
   var lastMessage;
 
   setup(function() {
-    stream = new threads.service.Stream({
+    stream = new bridge.service.Stream({
       id: 'fake-stream-id',
       channel: {
         postMessage: function(msg) {

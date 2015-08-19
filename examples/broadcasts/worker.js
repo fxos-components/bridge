@@ -1,6 +1,6 @@
-importScripts('../../threads.min.js');
+importScripts('../../bridge.min.js');
 
-var service = threads.service('clock').listen();
+var service = bridge.service('clock').listen();
 
 setInterval(() => {
   service.broadcast('tick', new Date());

@@ -35,6 +35,7 @@ var debug = 0 ? function(arg1, ...args) {
 /**
  * Default response timeout.
  * @type {Number}
+ * @private
  */
 var TIMEOUT = 1000;
 
