@@ -250,12 +250,11 @@ Client.prototype = {
 
     var msg = message(type)
       .set('port', this.port)
+      .set('timeout', this.timeout)
       .on('response', () => this.pending.delete(msg))
       .on('cancel', () => this.pending.delete(msg));
 
-    if (this.timeout) msg.set('timeout', this.timeout);
     this.pending.add(msg);
-
     return msg;
   },
 

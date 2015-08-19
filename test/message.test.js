@@ -70,6 +70,15 @@ suite('Message', function() {
       setTimeout(() => done(), 301);
     });
 
+    test('messages do not reject with timeout=0', function(done) {
+      message('does-not-respond')
+        .set('timeout', false)
+        .send(iframe)
+        .catch(done);
+
+      setTimeout(() => done(), 1001);
+    });
+
     test('can send one-way messages', function(done) {
       message('test-one-way-messages')
         .set('noRespond', true)
