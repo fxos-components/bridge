@@ -148,6 +148,7 @@ var debug = 0 ? function(arg1, ...args) {
 /**
  * Default response timeout.
  * @type {Number}
+ * @private
  */
 var TIMEOUT = 1000;
 
@@ -631,7 +632,7 @@ var adaptors = {
    *
    * @param {HTMLIframeElement} iframe
    */
-  HTMLIFrameElement(iframe) {
+  'HTMLIFrameElement': function(iframe) {
     debug('HTMLIFrameElement');
     var ready = windowReady(iframe);
     return {
@@ -651,7 +652,7 @@ var adaptors = {
    * @param {Object} channel
    * @param {[type]} options [description]
    */
-  BroadcastChannel(channel, options) {
+  'BroadcastChannel': function(channel, options) {
     debug('BroadcastChannel', channel.name);
     var receiver = options && options.receiver;
     var ready = options && options.ready;
@@ -697,7 +698,7 @@ var adaptors = {
     };
   },
 
-  Window(win, options) {
+  'Window': function(win, options) {
     debug('Window');
     var ready = options && options.ready || win === self;
     ready = ready ? Promise.resolve() : windowReady(win);
@@ -711,12 +712,12 @@ var adaptors = {
     };
   },
 
-  SharedWorker(worker) {
+  'SharedWorker': function(worker) {
     worker.port.start();
     return new PortAdaptor(worker.port);
   },
 
-  SharedWorkerGlobalScope() {
+  'SharedWorkerGlobalScope': function() {
     var ports = [];
 
     return {
