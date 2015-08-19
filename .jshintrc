@@ -26,6 +26,7 @@
   "nonstandard": true,
   "worker": true,
   "boss": true,
+  "sub": true,
 
   "-W078": true,
 

@@ -52,9 +52,9 @@ function Client(service, endpoint, timeout) {
 
   // Parameters can be passed as single object
   if (typeof service == 'object') {
-    endpoint = service.endpoint;
-    timeout = service.timeout;
-    service = service.service;
+    endpoint = service['endpoint'];
+    timeout = service['timeout'];
+    service = service['service'];
   }
 
   this.id = uuid();
