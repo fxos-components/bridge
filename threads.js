@@ -60,12 +60,12 @@ var debug = 0 ? function(arg1, ...args) {
  * @public
  */
 function Client(service, endpoint, timeout) {
-  if (!(this instanceof Client)) return new Client(service, endpoint);
+  if (!(this instanceof Client)) return new Client(service, endpoint, timeout);
 
   // Parameters can be passed as single object
   if (typeof service == 'object') {
-    timeout = service.timeout;
     endpoint = service.endpoint;
+    timeout = service.timeout;
     service = service.service;
   }
 
