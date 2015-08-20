@@ -35,7 +35,7 @@ message.receiver('receiver-1')
 
   .on('forwarded-message', message => {
     var iframe = document.createElement('iframe');
-    iframe.src = '/base/test/lib/message-test-2.html';
+    iframe.src = '/base/test/unit/lib/message-test-2.html';
     iframe.hidden = true;
     document.body.appendChild(iframe);
     message.forward(iframe);

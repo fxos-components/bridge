@@ -457,7 +457,7 @@ suite('end-to-end', function() {
 
   function iframeService(src) {
     var iframe = document.createElement('iframe');
-    iframe.src = '/base/test/lib/' + src;
+    iframe.src = '/base/test/unit/lib/' + src;
     iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts');
     iframe.hidden = true;
     dom.appendChild(iframe);
@@ -496,7 +496,7 @@ suite('end-to-end', function() {
   }
 
   function createEndpoint(file, type) {
-    var path = '/base/test/lib/' + file;
+    var path = '/base/test/unit/lib/' + file;
     var endpoint = create(type);
 
     endpoints.push(endpoint);

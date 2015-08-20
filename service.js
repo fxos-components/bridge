@@ -137,13 +137,21 @@ exports.Message = Message;
 /**
  * Mini Logger
  *
+ * 0: off
+ * 1: performance
+ * 2: console.log
+ *
  * @type {Function}
  * @private
  */
-var debug = 0 ? function(arg1, ...args) {
-  var type = `[${self.constructor.name}][${location.pathname}]`;
-  console.log(`[Message]${type} - "${arg1}"`, ...args);
-} : () => {};
+var debug = {
+  0: () => {},
+  1: arg => performance.mark(`[${self.constructor.name}][Message] - ${arg}`),
+  2: (arg1, ...args) => {
+    var type = `[${self.constructor.name}][${location.pathname}]`;
+    console.log(`[Message]${type} - "${arg1}"`, ...args);
+  }
+}[1];
 
 /**
  * Default response timeout.
@@ -201,7 +209,7 @@ Message.prototype = {
     return this;
   },
 
-  set: function(key, value) {
+  set(key, value) {
     debug('set', key, value);
     if (typeof key == 'object') Object.assign(this, key);
     else this[key] = value;
@@ -229,7 +237,7 @@ Message.prototype = {
    * @param  {(Iframe|Window|Worker|MessagePort)} endpoint
    * @return {Promise}
    */
-  send: function(endpoint) {
+  send(endpoint) {
     debug('send', this.type);
     if (this.sent) throw error(1);
     var serialized = this.serialize();
@@ -323,7 +331,7 @@ Message.prototype = {
    *
    * @public
    */
-  cancel: function() {
+  cancel() {
     this.teardown();
     this.cancelled = true;
     this.emit('cancel');
@@ -346,7 +354,7 @@ Message.prototype = {
    * @public
    * @param  {*} [result] Data to send back with the response
    */
-  respond: function(result) {
+  respond(result) {
     debug('respond', result);
 
     if (this.hasResponded) throw error(2);
@@ -407,7 +415,7 @@ Message.prototype = {
    * @param  {(HTMLIframeElement|MessagePort|Window)} endpoint
    * @public
    */
-  forward: function(endpoint) {
+  forward(endpoint) {
     debug('forward');
     return this
       .set('silentTimeout', true)
@@ -431,16 +439,6 @@ Message.prototype = {
     this.emit('response', response);
   }
 };
-
-// Prevent ClosureCompiler
-// mangling public methods
-var mp = Message.prototype;
-mp['forward'] = mp.forward;
-mp['respond'] = mp.respond;
-mp['preventDefault'] = mp.preventDefault;
-mp['cancel'] = mp.cancel;
-mp['send'] = mp.send;
-mp['set'] = mp.set;
 
 // Mixin Emitter methods
 Emitter(Message.prototype);
@@ -481,7 +479,7 @@ Receiver.prototype = {
    * BroadcastChannel|Window|Object)} [thing]
    * @public
    */
-  listen: function(thing) {
+  listen(thing) {
     debug('listen');
     var _port = createPort(thing || self, { receiver: true });
     if (this.ports.has(_port)) return;
@@ -496,7 +494,7 @@ Receiver.prototype = {
    *
    * @public
    */
-  unlisten: function() {
+  unlisten() {
     debug('unlisten');
     this.ports.forEach(port => {
       port.removeListener(this.onMessage, this.unlisten);
@@ -538,11 +536,6 @@ Receiver.prototype = {
     return this;
   }
 };
-
-var rp = Receiver.prototype;
-rp['listen'] = rp.listen;
-rp['unlisten'] = rp.unlisten;
-rp['destroy'] = rp.destroy;
 
 // Mixin Emitter methods
 Emitter(Receiver.prototype);
@@ -829,15 +822,23 @@ var Receiver = message.Receiver;
 module.exports = Service;
 
 /**
- * Mini Logger
+ * Debug logger
+ *
+ * 0: off
+ * 1: performance
+ * 2: console.log
  *
  * @type {Function}
  * @private
  */
-var debug = 0 ? function(arg1, ...args) {
-  var type = `[${self.constructor.name}][${location.pathname}]`;
-  console.log(`[Service]${type} - "${arg1}"`, ...args);
-} : () => {};
+var debug = {
+  0: () => {},
+  1: arg => performance.mark(`[${self.constructor.name}][Service] - ${arg}`),
+  2: (arg1, ...args) => {
+    var type = `[${self.constructor.name}][${location.pathname}]`;
+    console.log(`[Service]${type} - "${arg1}"`, ...args);
+  }
+}[1];
 
 /**
  * Extends `Receiver`
