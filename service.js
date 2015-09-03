@@ -151,7 +151,7 @@ var debug = {
     var type = `[${self.constructor.name}][${location.pathname}]`;
     console.log(`[Message]${type} - "${arg1}"`, ...args);
   }
-}[1];
+}[0];
 
 /**
  * Default response timeout.
@@ -191,9 +191,6 @@ Message.prototype = {
   setupInbound (e) {
     debug('inbound');
     this.hasResponded = false;
-
-    // When an Endpoint is created from an event
-    // target we know it's ready to recieve messages.
     this.setSourcePort(e.source || e.target);
 
     // Keep a reference to the MessageEvent
@@ -566,11 +563,14 @@ function error(id, ...args) {
 
 var deferred = require('../utils').deferred;
 
+/**
+ * Message event name
+ * @type {String}
+ */
 const MSG = 'message';
 
 /**
  * Mini Logger
- *
  * @type {Function}
  * @private
  */
@@ -580,10 +580,12 @@ var debug = 0 ? function(arg1, ...args) {
 } : () => {};
 
 /**
- * Creates a
- * @param  {[type]} target  [description]
- * @param  {[type]} options [description]
- * @return {[type]}         [description]
+ * Creates a bridge.js port abstraction
+ * with a consistent interface.
+ *
+ * @param  {Object} target
+ * @param  {Object} options
+ * @return {PortAdaptor}
  */
 module.exports = function create(target, options) {
   if (!target) throw error(1);
@@ -613,7 +615,7 @@ var PortAdaptorProto = PortAdaptor.prototype = {
 
 /**
  * A registry of specific adaptors
- * for which the default port-adaptor
+ * for when the default PortAdaptor
  * is not suitable.
  *
  * @type {Object}
@@ -632,9 +634,7 @@ var adaptors = {
       addListener(callback, listen) { on(window, MSG, callback); },
       removeListener(callback, listen) { off(window, MSG, callback); },
       postMessage(data, transfer) {
-        ready.then(() => {
-          iframe.contentWindow.postMessage(data, '*', transfer);
-        });
+        ready.then(() => postMessageSync(iframe.contentWindow, data, transfer));
       }
     };
   },
@@ -693,14 +693,17 @@ var adaptors = {
 
   'Window': function(win, options) {
     debug('Window');
-    var ready = options && options.ready || win === self;
+    var ready = options && options.ready
+      || win === parent // parent always ready
+      || win === self; // self always ready
+
     ready = ready ? Promise.resolve() : windowReady(win);
 
     return {
       addListener(callback, listen) { on(window, MSG, callback); },
       removeListener(callback, listen) { off(window, MSG, callback); },
       postMessage(data, transfer) {
-        ready.then(() => win.postMessage(data, '*', transfer));
+        ready.then(() => postMessageSync(win, data, transfer));
       }
     };
   },
@@ -737,6 +740,14 @@ var adaptors = {
   }
 };
 
+/**
+ * Return a Promise that resolves
+ * when a Window is ready to start
+ * recieving messages.
+ *
+ * @param  {Window} target
+ * @return {Promise}
+ */
 var windowReady = (function() {
   if (typeof window == 'undefined') return;
   var parent = window.opener || window.parent;
@@ -748,7 +759,7 @@ var windowReady = (function() {
   if (parent != self) {
     on(window, domReady, function fn() {
       off(window, domReady, fn);
-      parent.postMessage('load', '*');
+      postMessageSync(parent, 'load');
     });
   }
 
@@ -791,6 +802,29 @@ function on(target, name, fn) { target.addEventListener(name, fn); }
 function off(target, name, fn) { target.removeEventListener(name, fn); }
 
 /**
+ * Dispatches syncronous 'message'
+ * event on a Window.
+ *
+ * We use this because standard
+ * window.postMessage() gets blocked
+ * until the main-thread is free.
+ *
+ * @param  {Window} win
+ * @param  {*} data
+ * @private
+ */
+function postMessageSync(win, data, transfer) {
+  var event = {
+    data: data,
+    source: self
+  };
+
+  if (transfer) event.ports = transfer;
+
+  win.dispatchEvent(new MessageEvent('message', event));
+}
+
+/**
  * Creates new `Error` from registery.
  *
  * @param  {Number} id Error Id
@@ -802,6 +836,7 @@ function error(id) {
     1: 'target is undefined'
   }[id]);
 }
+
 },{"../utils":6}],5:[function(require,module,exports){
 'use strict';
 
@@ -838,7 +873,7 @@ var debug = {
     var type = `[${self.constructor.name}][${location.pathname}]`;
     console.log(`[Service]${type} - "${arg1}"`, ...args);
   }
-}[1];
+}[0];
 
 /**
  * Extends `Receiver`
@@ -878,8 +913,10 @@ function Service(name) {
     .on('_on', this.onOn.bind(this));
 
   this.destroy = this.destroy.bind(this);
-  debug('initialized', name, self.createEvent);
+  debug('initialized', name);
 }
+
+Service.prototype.inWindow = constructor.name === 'Window';
 
 /**
  * Define a method to expose to Clients.
@@ -1007,25 +1044,42 @@ Service.prototype.onConnect = function(message) {
   this.emit('before-connect', message);
   if (message.defaultPrevented) return;
 
-  // If the transport used support 'transfer' then
-  // a MessageChannel port will have been sent.
+  this.upgradeChannel(message);
+  this.addClient(clientId, message.sourcePort);
+  message.respond();
+
+  this.emit('connected', clientId);
+  debug('connected', clientId);
+};
+
+/**
+ * When a Client attempt to connect we
+ * can sometimes upgrade the to a direct
+ * MessageChannel 'pipe' to prevent
+ * hopping threads.
+ *
+ * We only do this if both:
+ *
+ *  A. `MessagePort` was supplied with the 'connect' event.
+ *  B. The Client and Service are not both in `Window` contexts
+ *     (it's faster to use sync messaging window -> window).
+ *
+ * @param  {Message} message  the 'connect' message
+ * @private
+ */
+Service.prototype.upgradeChannel = function(message) {
+  if (this.inWindow && message.data.originEnv === 'Window') return;
+
   var ports = message.event.ports;
   var channel = ports && ports[0];
 
-  // If the 'connect' message came with
-  // a channel, update the source port
-  // so response message goes directly.
   if (channel) {
     message.setSourcePort(channel);
     this.listen(channel);
     channel.start();
   }
 
-  this.addClient(clientId, message.sourcePort);
-  message.respond();
-
-  this.emit('connected', clientId);
-  debug('connected', clientId);
+  debug('channel upgraded');
 };
 
 /**

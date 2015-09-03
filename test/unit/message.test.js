@@ -6,6 +6,7 @@ suite('Message', function() {
   var receivers = [];
   var iframe;
   var thread;
+  var worker;
 
   setup(function() {
     this.sinon = sinon.sandbox.create();
@@ -16,6 +17,8 @@ suite('Message', function() {
     iframe.src = '/base/test/unit/lib/message-test-1.html';
     iframe.hidden = true;
     this.dom.appendChild(iframe);
+
+    worker = new Worker('/base/test/unit/lib/message-worker.js');
   });
 
   teardown(function() {

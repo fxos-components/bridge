@@ -137,6 +137,36 @@ suite('end-to-end', function() {
         done();
       }).catch(done, done);
     });
+
+    test('window -> window do not use MessageChannel', function(done) {
+      var endpoint = createEndpoint('service-test-1-window.html', 'iframe');
+      var myClient = createClient('service-1', endpoint);
+
+      this.sinon.spy(Message.prototype, 'onMessage');
+
+      myClient.method('method-1', 'my-arg').then(result => {
+        var event = Message.prototype.onMessage.args[1][0];
+        var transport = event.source.constructor.name;
+        assert.equal(transport, 'Window');
+        done();
+      }).catch(done, done);
+    });
+
+    test('window -> window always uses sync `.dispatchEvent()`', function(done) {
+      var endpoint = createEndpoint('service-test-1-window.html', 'iframe');
+      var myClient = createClient('service-1', endpoint);
+
+      endpoint.onload = e => {
+        var dispatchEvent = this.sinon.spy(endpoint.contentWindow, 'dispatchEvent');
+        var postMessage = this.sinon.spy(endpoint.contentWindow, 'postMessage');
+
+        myClient.method('method-1', 'my-arg').then(result => {
+          sinon.assert.calledTwice(dispatchEvent); // connect and method
+          sinon.assert.notCalled(postMessage);
+          done();
+        }).catch(done, done);
+      };
+    });
   });
 
   suite('events >>', () => {

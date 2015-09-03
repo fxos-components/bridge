@@ -20,10 +20,12 @@ suite('Service /', function() {
       myService = service('service-name');
       fakeMessage = {
         type: '_method',
+        foo: 'foo',
         data: {
           name: 'my-method',
           args: ['a', 'b', 'c']
         },
+        event: { ports: [] },
         respond: sinon.spy()
       };
     });
@@ -64,13 +66,12 @@ suite('Service /', function() {
           service: 'service1'
         },
         event: { ports: [] },
+        setSourcePort: sinon.spy(),
         respond: sinon.spy()
       };
     });
 
-    teardown(function() {
-
-    });
+    teardown(function() {});
 
     test('it does not respond if the service name does not match', function() {
       fakeMessage.data.service = 'service3';
@@ -107,166 +108,23 @@ suite('Service /', function() {
       myService.emit('_connect', fakeMessage);
       sinon.assert.notCalled(fakeMessage.respond);
     });
+
+    test('it responds on MessageChannel the Client and Service are not within Windows', function() {
+      var service = bridge.service('service1');
+      var port = new MessageChannel().port1;
+
+      fakeMessage.event.ports = [port];
+
+      // Client 1
+      fakeMessage.data.originEnv = 'Window';
+      service.emit('_connect', fakeMessage);
+      sinon.assert.notCalled(fakeMessage.setSourcePort);
+
+      // Client 2
+      fakeMessage.data.clientId = 1234;
+      fakeMessage.data.originEnv = 'Worker';
+      service.emit('_connect', fakeMessage);
+      sinon.assert.calledWith(fakeMessage.setSourcePort, port);
+    });
   });
-
-  // suite('client provided contracts /', function() {
-  //   setup(function() {
-  //     _bridge.push(bridge.create({
-  //       src: '/base/test/unit/lib/contracts.js',
-  //       type: 'worker'
-  //     }));
-
-  //     this.contract = {
-  //       methods: {
-  //         contractMethod: ['string']
-  //       },
-
-  //       events: {
-  //         'contractevent': {
-  //           object: 'object',
-  //           number: 'number',
-  //           string: 'string',
-  //           boolean: 'boolean'
-  //         }
-  //       }
-  //     };
-
-  //     clients.push(bridge.client('contract-service', {
-  //       thread: _bridge[0],
-  //       contract: this.contract
-  //     }));
-  //   });
-
-  //   test('contract method calls are allowed', function(done) {
-  //     clients[0].method('contractMethod', 'foo').then(function(result) {
-  //       assert.equal(result, 'conformance: foo');
-  //     }).then(done, done);
-  //   });
-
-  //   test('uncontracted method calls throw', function(done) {
-  //     clients[0].method('uncontractMethod').then(function(result) {
-  //       done('should not be called');
-  //     }).catch(function(err) {
-  //       assert.ok(err);
-  //       done();
-  //     }).then(done, done);
-  //   });
-
-  //   test('calling with incorrect argument type throws', function(done) {
-  //     clients[0].method('contractMethod', {}).then(function(result) {
-  //       assert.equal(result, 'rebellion');
-  //       done('should not be called');
-  //     }).catch(function(err) {
-  //       assert.ok(err);
-  //       done();
-  //     }).then(done, done);
-  //   });
-
-  //   test('calling with incorrect arguments.length throws', function(done) {
-  //     clients[0].method('contractMethod', '1', '2', '3').then(function(result) {
-  //       assert.equal(result, 'rebellion');
-  //       done('should not be called');
-  //     }).catch(function(err) {
-  //       assert.ok(err);
-  //       done();
-  //     }).then(done, done);
-  //   });
-  // });
-
-  // suite('server provided contracts', function() {
-  //   setup(function() {
-  //     _bridge.push(bridge.create({
-  //       src: '/base/test/unit/lib/contracts.js',
-  //       type: 'worker'
-  //     }));
-
-  //     clients.push(bridge.client('service-supplied-contract', { thread: _bridge[0] }));
-  //   });
-
-  //   test('contract method calls are allowed', function(done) {
-  //     clients[0].method('contractMethod', 'foo').then(function(result) {
-  //       assert.equal(result, 'conformance: foo');
-  //     }).then(done, done);
-  //   });
-
-  //   test('uncontracted method calls throw', function(done) {
-  //     clients[0].method('uncontractMethod').then(function(result) {
-  //       assert.equal(result, 'rebellion');
-  //       done('should not be called');
-  //     }).catch(function(err) {
-  //       assert.ok(err);
-  //       done();
-  //     }).then(done, done);
-  //   });
-  // });
-
-  // suite('broadcast()', function() {
-  //   test('it is able to target separate clients', function(done) {
-  //     var spy1 = sinon.spy();
-  //     var spy2 = sinon.spy();
-  //     var spy3 = sinon.spy();
-
-  //     var thread = bridge.create({
-  //       src: '/base/test/unit/lib/events.js',
-  //       type: 'worker'
-  //     });
-
-  //     clients.push(bridge.client('test-events', { thread: thread }));
-  //     clients.push(bridge.client('test-events', { thread: thread }));
-  //     clients.push(bridge.client('test-events', { thread: thread }));
-
-  //     clients[0].on('eventname', spy1);
-  //     clients[1].on('eventname', spy2);
-  //     clients[2].on('eventname', spy3);
-
-  //     clients[0].method('testTargetedBroadcast', 'eventname', 'data', [
-  //       clients[0].id,
-  //       clients[1].id
-  //     ]).then(function() {
-  //       sinon.assert.called(spy1);
-  //       sinon.assert.called(spy2);
-  //       sinon.assert.notCalled(spy3);
-  //       done();
-  //     });
-  //   });
-  // });
-
-  // suite('return values', function() {
-  //   setup(function() {
-  //     _bridge.push(bridge.create({
-  //       src: '/base/test/unit/lib/thread.js',
-  //       type: 'worker'
-  //     }));
-
-  //     clients.push(bridge.client('view-server', { thread: _bridge[0] }));
-  //   });
-
-  //   test('returns false', function(done) {
-  //     clients[0].method('returnsFalse').then(function(value) {
-  //       assert.equal(value, false);
-  //       done();
-  //     }).catch(done);
-  //   });
-
-  //   test('returns undefined', function(done) {
-  //     clients[0].method('returnsUndefined').then(function(value) {
-  //       assert.equal(value, undefined);
-  //       done();
-  //     }).catch(done);
-  //   });
-
-  //   test('returns zero', function(done) {
-  //     clients[0].method('returnsZero').then(function(value) {
-  //       assert.equal(value, 0);
-  //       done();
-  //     }).catch(done);
-  //   });
-
-  //   test('returns empty string', function(done) {
-  //     clients[0].method('returnsEmptyString').then(function(value) {
-  //       assert.equal(value, '');
-  //       done();
-  //     }).catch(done);
-  //   });
-  // });
 });
