@@ -1,0 +1,6 @@
+{
+  "type": "privileged",
+  "name": "ping-shared-worker",
+  "description": "Create a SharedWorker service and call a method on it",
+  "launch_path": "/index.html"
+}

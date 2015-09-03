@@ -112,7 +112,7 @@ suite('Service /', function() {
   // suite('client provided contracts /', function() {
   //   setup(function() {
   //     _bridge.push(bridge.create({
-  //       src: '/base/test/lib/contracts.js',
+  //       src: '/base/test/unit/lib/contracts.js',
   //       type: 'worker'
   //     }));
 
@@ -176,7 +176,7 @@ suite('Service /', function() {
   // suite('server provided contracts', function() {
   //   setup(function() {
   //     _bridge.push(bridge.create({
-  //       src: '/base/test/lib/contracts.js',
+  //       src: '/base/test/unit/lib/contracts.js',
   //       type: 'worker'
   //     }));
 
@@ -207,7 +207,7 @@ suite('Service /', function() {
   //     var spy3 = sinon.spy();
 
   //     var thread = bridge.create({
-  //       src: '/base/test/lib/events.js',
+  //       src: '/base/test/unit/lib/events.js',
   //       type: 'worker'
   //     });
 
@@ -234,7 +234,7 @@ suite('Service /', function() {
   // suite('return values', function() {
   //   setup(function() {
   //     _bridge.push(bridge.create({
-  //       src: '/base/test/lib/thread.js',
+  //       src: '/base/test/unit/lib/thread.js',
   //       type: 'worker'
   //     }));
 

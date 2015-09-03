@@ -13,7 +13,7 @@ suite('Message', function() {
     document.body.appendChild(this.dom);
 
     iframe = document.createElement('iframe');
-    iframe.src = '/base/test/lib/message-test-1.html';
+    iframe.src = '/base/test/unit/lib/message-test-1.html';
     iframe.hidden = true;
     this.dom.appendChild(iframe);
   });

@@ -20,13 +20,21 @@ module.exports = Client;
 /**
  * Mini Logger
  *
+ * 0: off
+ * 1: performance
+ * 2: console.log
+ *
  * @type {Function}
  * @private
  */
-var debug = 0 ? function(arg1, ...args) {
-  var type = `[${self.constructor.name}][${location.pathname}]`;
-  console.log(`[Client]${type} - "${arg1}"`, ...args);
-} : () => {};
+var debug = {
+  0: () => {},
+  1: arg => performance.mark(`[${self.constructor.name}][Client] - ${arg}`),
+  2: (arg1, ...args) => {
+    var type = `[${self.constructor.name}][${location.pathname}]`;
+    console.log(`[Client]${type} - "${arg1}"`, ...args);
+  }
+}[1];
 
 /**
  * A Client is a remote interface
