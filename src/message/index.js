@@ -38,7 +38,7 @@ var debug = {
     var type = `[${self.constructor.name}][${location.pathname}]`;
     console.log(`[Message]${type} - "${arg1}"`, ...args);
   }
-}[1];
+}[0];
 
 /**
  * Default response timeout.
@@ -78,9 +78,6 @@ Message.prototype = {
   setupInbound (e) {
     debug('inbound');
     this.hasResponded = false;
-
-    // When an Endpoint is created from an event
-    // target we know it's ready to recieve messages.
     this.setSourcePort(e.source || e.target);
 
     // Keep a reference to the MessageEvent
