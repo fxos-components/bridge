@@ -8,6 +8,8 @@ suite('Client()', function() {
   var client = bridge.client;
   var myClient;
 
+  this.timeout(3000);
+
   setup(function() {
     this.sinon = sinon.sandbox.create();
     this.endpoint = {
