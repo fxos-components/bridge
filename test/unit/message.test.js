@@ -28,6 +28,8 @@ suite('Message', function() {
   });
 
   suite('Message#send() >>', function() {
+    this.timeout(3000);
+
     test('it responds', function(done) {
       message('test-message')
         .send(iframe)
@@ -60,7 +62,20 @@ suite('Message', function() {
         .catch(err => {
           assert.equal(err.message, 'timeout');
           done();
-        }).catch(done);
+        });
+    });
+
+    test('messages has default timeout of 2 secs', function(done) {
+      var start = Date.now();
+
+      message('does-not-respond')
+        .send(iframe)
+        .catch(err => {
+          var took = Math.round((Date.now() - start) / 1000);
+          assert.equal(err.message, 'timeout');
+          assert.equal(took, 2, 'rounded time is 2 secs');
+          done();
+        });
     });
 
     test('messages do not reject with the `silentTimeout` option', function(done) {
@@ -79,7 +94,7 @@ suite('Message', function() {
         .send(iframe)
         .catch(done);
 
-      setTimeout(() => done(), 1001);
+      setTimeout(() => done(), 2001);
     });
 
     test('can send one-way messages', function(done) {

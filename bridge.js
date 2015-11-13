@@ -614,7 +614,7 @@ var debug = {
  * @type {Number}
  * @private
  */
-var TIMEOUT = 1000;
+var TIMEOUT = 2000;
 
 /**
  * Initialize a new `Message`
