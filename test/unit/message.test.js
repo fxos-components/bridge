@@ -49,10 +49,41 @@ suite('Message', function() {
         }).catch(done);
     });
 
-    test('promise rejects if error thrown', function(done) {
+    test('promise rejects if `Error` thrown', function(done) {
       message('throw-error')
         .send(iframe)
-        .catch(response => done());
+        .catch(error => {
+          assert.equal(error.message, 'my-error');
+          done();
+        });
+    });
+
+    test('promise rejects if `DOMError` is thrown', function(done) {
+      return message('throw-dom-error')
+        .send(iframe)
+        .catch(error => {
+          assert.equal(error.name, 'my-error-name');
+          assert.equal(error.message, 'my-error-message');
+          done();
+        });
+    });
+
+    test('promise rejects if `DOMException` is thrown', function(done) {
+      return message('throw-dom-exception')
+        .send(iframe)
+        .catch(error => {
+          assert.equal(error.message, 'my-error-message');
+          done();
+        });
+    });
+
+    test('supports throwing things that are not `Error`', function(done) {
+      message('throw-non-error')
+        .send(iframe)
+        .catch(response => {
+          assert.equal(response.normal, 'object');
+          done();
+        });
     });
 
     test('requests timeout when no response', function(done) {

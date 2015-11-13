@@ -16,7 +16,21 @@ message.receiver('receiver-1')
   })
 
   .on('throw-error', message => {
-    throw new Error('service error');
+    throw new Error('my-error');
+  })
+
+  .on('throw-dom-error', message => {
+    throw new DOMError('my-error-name', 'my-error-message');
+  })
+
+  .on('throw-dom-exception', message => {
+    var err = new DOMException('my-error-message');
+    console.log('XXX', err);
+    throw err;
+  })
+
+  .on('throw-non-error', message => {
+    throw { normal: 'object' };
   })
 
   .on('does-not-respond', message => {})

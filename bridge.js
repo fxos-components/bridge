@@ -611,6 +611,7 @@ var debug = {
 
 /**
  * Default response timeout.
+ *
  * @type {Number}
  * @private
  */
@@ -633,7 +634,7 @@ function Message(type) {
   this.onTimeout = this.onTimeout.bind(this);
   if (typeof type === 'object') this.setupInbound(type);
   else this.setupOutbound(type);
-  debug('initialized', type);
+  debug('initialized', this.type);
 }
 
 Message.prototype = {
@@ -808,17 +809,16 @@ Message.prototype = {
    * @param  {*} [result] Data to send back with the response
    */
   respond(result) {
-    debug('respond', result);
-
+    debug('respond', result, this.id);
     if (this.hasResponded) throw error(2);
     if (!this.sourcePort) return;
     if (this.noRespond) return;
 
-    var self = this;
     this.hasResponded = true;
+    var self = this;
 
-    // Repsond with rejection when result is an `Error`
-    if (result instanceof Error) reject(result);
+    // Reject when result is an `Error`
+    if (this.error) reject(this.error);
 
     // Call the handler and make
     // sure return value is a promise.
@@ -838,16 +838,17 @@ Message.prototype = {
     }
 
     function reject(err) {
-      var msg = err && err.message || err;
-      debug('reject', msg);
+      var serialized = serializeError(err);
+      debug('reject', serialized);
       respond({
         type: 'reject',
-        value: msg
+        value: serialized
       });
     }
 
     function respond(response) {
       self.response = response;
+
       self.sourcePort.postMessage({
         id: self.id,
         response: response
@@ -864,6 +865,9 @@ Message.prototype = {
    * message request timing out should
    * the response come back via an
    * alternative route.
+   *
+   * TODO: If forwarded message errors
+   * check it reaches origin (#86).
    *
    * @param  {(HTMLIframeElement|MessagePort|Window)} endpoint
    * @public
@@ -956,6 +960,7 @@ Receiver.prototype = {
 
   /**
    * Callback to handle inbound messages.
+   *
    * @param  {MessageEvent} e
    * @private
    */
@@ -972,7 +977,8 @@ Receiver.prototype = {
 
     try { this.emit(message.type, message); }
     catch (e) {
-      message.respond(e);
+      message.error = e;
+      message.respond();
       throw e;
     }
   },
@@ -992,6 +998,24 @@ Receiver.prototype = {
 
 // Mixin Emitter methods
 Emitter(Receiver.prototype);
+
+/**
+ * Error object can't be sent via
+ * .postMessage() so we have to
+ * serialize them into an error-like
+ * Object that can be sent.
+ *
+ * @param  {*} err
+ * @return {Object|*}
+ */
+function serializeError(err) {
+  switch (err && err.constructor.name) {
+    case 'DOMException':
+    case 'Error': return { message: err.message };
+    case 'DOMError': return { message: err.message, name: err.name };
+    default: return err;
+  }
+}
 
 /**
  * Creates new `Error` from registry.
@@ -1571,12 +1595,14 @@ Service.prototype.onMethod = function(message) {
 
   var method = message.data;
   var name = method.name;
+  var fn = this.methods[name];
   var result;
 
-  var fn = this.methods[name];
   if (!fn) throw error(4, name);
+
   try { result = fn.apply(this, method.args); }
-  catch (err) { result = err; }
+  catch (err) { message.error = err; }
+
   message.respond(result);
 };
 
