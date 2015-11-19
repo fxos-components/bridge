@@ -423,7 +423,8 @@ suite('end-to-end', function() {
     test('un-clonable object', function(done) {
       worker = createEndpoint('service-test-1-worker.js', 'worker');
       var myClient = createClient('service-2', worker);
-      myClient.method('cloningError').catch(function(err) {
+      myClient.method('cloningError')
+      .catch(function(err) {
         done();
       });
     });
@@ -449,8 +450,8 @@ suite('end-to-end', function() {
     test('thrown exception', function(done) {
       var endpoint = createEndpoint('service-test-1-worker.js', 'worker');
       var myClient = createClient('service-2', endpoint);
-      myClient.method('throwException').catch(function(err) {
-        assert.equal(err, 'my error');
+      return myClient.method('throwException').catch(function(err) {
+        assert.equal(err.message, 'my error');
         done();
       });
     });

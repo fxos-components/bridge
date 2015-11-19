@@ -221,7 +221,7 @@ suite('Client()', function() {
         .then(result => done('should not run'))
         .catch(err => {
           assert.ok(Date.now() - then >= 300);
-          assert.ok(Date.now() - then < 1000);
+          assert.ok(Date.now() - then < 2000);
           done();
         })
         .catch(done);
