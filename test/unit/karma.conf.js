@@ -18,7 +18,7 @@ module.exports = function(config) {
 
     files: [
       'bridge.js',
-      'src/plugins/stream/*.js',
+      'plugins/stream/*.js',
       { pattern: 'test/unit/lib/*', included: false },
       'test/unit/test.js',
       'test/unit/message.test.js',

@@ -33,7 +33,7 @@ var debug = 0 ? function(arg1, ...args) {
  */
 module.exports = function create(target, options) {
   if (!target) throw error(1);
-  if (isEndpoint(target)) return target;
+  if (isAdaptor(target)) return target;
   var type = target.constructor.name;
   var CustomAdaptor = adaptors[type];
   debug('creating port adaptor for', type);
@@ -75,8 +75,8 @@ var adaptors = {
     debug('HTMLIFrameElement');
     var ready = windowReady(iframe);
     return {
-      addListener(callback, listen) { on(window, MSG, callback); },
-      removeListener(callback, listen) { off(window, MSG, callback); },
+      addListener(callback) { on(window, MSG, callback); },
+      removeListener(callback) { off(window, MSG, callback); },
       postMessage(data, transfer) {
         ready.then(() => postMessageSync(iframe.contentWindow, data, transfer));
       }
@@ -144,8 +144,8 @@ var adaptors = {
     ready = ready ? Promise.resolve() : windowReady(win);
 
     return {
-      addListener(callback, listen) { on(window, MSG, callback); },
-      removeListener(callback, listen) { off(window, MSG, callback); },
+      addListener(callback) { on(window, MSG, callback); },
+      removeListener(callback) { off(window, MSG, callback); },
       postMessage(data, transfer) {
         ready.then(() => postMessageSync(win, data, transfer));
       }
@@ -173,11 +173,11 @@ var adaptors = {
         on(self, 'connect', this.onconnect);
       },
 
-      removeListener(callback, unlisten) {
+      removeListener(callback) {
         off(self, 'connect', this.onconnect);
         ports.forEach(port => {
           port.close();
-          unlisten(port);
+          port.removeEventListener(MSG, callback);
         });
       }
     };
@@ -237,7 +237,7 @@ var windowReady = (function() {
  * @ignore
  */
 
-function isEndpoint(thing) {
+function isAdaptor(thing) {
   return !!(thing && thing.addListener);
 }
 
