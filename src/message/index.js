@@ -61,6 +61,7 @@ function Message(type) {
   this.cancelled = false;
   this.listeners = [];
   this.deferred = defer();
+  this.listen = this.listen.bind(this);
   this.onMessage = this.onMessage.bind(this);
   this.onTimeout = this.onTimeout.bind(this);
   if (typeof type === 'object') this.setupInbound(type);
@@ -189,7 +190,7 @@ Message.prototype = {
   listen(thing) {
     debug('add response listener', thing);
     var port = createPort(thing);
-    port.addListener(this.onMessage);
+    port.addListener(this.onMessage, this.listen);
     this.listeners.push(port);
     return this;
   },
@@ -342,8 +343,8 @@ function Receiver(name) {
   this.name = name;
   this.ports = new Set();
   this.onMessage = this.onMessage.bind(this);
-  this['listen'] = this['listen'].bind(this);
-  this['unlisten'] = this['unlisten'].bind(this);
+  this.listen = this.listen.bind(this);
+  this.unlisten = this.unlisten.bind(this);
   debug('receiver initialized', name);
 }
 
@@ -384,9 +385,7 @@ Receiver.prototype = {
    */
   unlisten() {
     debug('unlisten');
-    this.ports.forEach(port => {
-      port.removeListener(this.onMessage, this.unlisten);
-    });
+    this.ports.forEach(port => port.removeListener(this.onMessage));
   },
 
   /**
