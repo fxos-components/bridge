@@ -1,23 +1,19 @@
 {
   "name": "bridge",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "homepage": "https://github.com/gaia-components/bridge",
   "license": "MIT",
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/karma/bin/karma start test/unit/karma.conf.js --single-run",
     "test-dev": "./node_modules/karma/bin/karma start test/unit/karma.conf.js",
-
     "docs": "rm -rf docs/bridge; babel src --out-dir src-es5; jsdoc -c docs/jsdoc.json; rm -rf src-es5",
-
     "bundle": "browserify build/bridge.js -o bridge.js; npm run bundle-client; npm run bundle-service",
     "bundle-client": "browserify build/client -s bridge -o client.js",
     "bundle-service": "browserify build/service -s bridge -o service.js",
-
     "compress": "ccjs bridge.js --language_in=ECMASCRIPT6 --language_out=ES5 > bridge.min.js; npm run compress-client; npm run compress-service",
     "compress-client": "ccjs client.js --language_in=ECMASCRIPT6 --language_out=ES5 > client.min.js",
     "compress-service": "ccjs service.js --language_in=ECMASCRIPT6 --language_out=ES5 > service.min.js",
-
     "build": "npm run bundle; npm run compress",
     "watch": "watchify build/bridge.js -o bridge.js",
     "watch-client": "watchify src/client.js -s client -o client.js",
