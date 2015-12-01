@@ -39,8 +39,9 @@ var debug = {
 /**
  * The type environment.
  * @type {String}
+ * @private
  */
-var env = constructor.name
+var env = self.constructor.name;
 
 /**
  * A Client is a remote interface
