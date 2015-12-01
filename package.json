@@ -1,7 +1,7 @@
 {
   "name": "bridge",
   "version": "1.1.0",
-  "homepage": "https://github.com/gaia-components/bridge",
+  "homepage": "https://github.com/fxos-components/bridge",
   "license": "MIT",
   "main": "index.js",
   "scripts": {
@@ -22,10 +22,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/gaia-components/bridge.git"
+    "url": "git://github.com/fxos-components/bridge.git"
   },
   "bugs": {
-    "url": "https://github.com/gaia-components/bridge/issues"
+    "url": "https://github.com/fxos-components/bridge/issues"
   },
   "dependencies": {
     "browserify": "^10.1.0",
@@ -42,6 +42,7 @@
     "karma-firefox-launcher": "0.1.3",
     "karma-mocha": "0.1.3",
     "karma-sinon-chai": "0.1.6",
+    "mocha": "^2.3.4",
     "mozilla-download": "^1.0.4",
     "watchify": "^3.2.3"
   }
