@@ -436,7 +436,8 @@ Emitter(Receiver.prototype);
  * Object that can be sent.
  *
  * @param  {*} err
- * @return {Object|*}
+ * @return {(Object|*)}
+ * @private
  */
 function serializeError(err) {
   switch (err && err.constructor.name) {

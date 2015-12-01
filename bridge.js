@@ -51,8 +51,9 @@ var debug = {
 /**
  * The type environment.
  * @type {String}
+ * @private
  */
-var env = constructor.name
+var env = self.constructor.name;
 
 /**
  * A Client is a remote interface
@@ -1005,7 +1006,8 @@ Emitter(Receiver.prototype);
  * Object that can be sent.
  *
  * @param  {*} err
- * @return {Object|*}
+ * @return {(Object|*)}
+ * @private
  */
 function serializeError(err) {
   switch (err && err.constructor.name) {
