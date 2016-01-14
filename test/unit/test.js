@@ -167,10 +167,33 @@ suite('end-to-end', function() {
         }).catch(done, done);
       };
     });
+
+    test('window -> window works with asynchronously created service',
+    function(done) {
+      this.sinon.spy(Message.prototype, 'onMessage');
+
+      var endpoint = createEndpoint('service-test-2-window.html', 'iframe');
+      var client = createClient('service-2', endpoint);
+
+      new Promise(
+        (resolve) => endpoint.contentWindow.addEventListener('ready', resolve)
+      ).then(
+        () => client.method('method-1', 'my-arg')
+      ).then((returnResult) => {
+        assert.equal(returnResult, 'my-arg');
+
+        sinon.assert.calledWith(
+          Message.prototype.onMessage,
+          sinon.match.instanceOf(MessageEvent).and(
+            sinon.match.has('source', endpoint.contentWindow)
+          )
+        );
+      }).then(done, done);
+    });
   });
 
   suite('events >>', () => {
-    test('connected clients recieve event broadcasts', done => {
+    test('connected clients receive event broadcasts', done => {
       var endpoint = createEndpoint('service-test-1-worker.js', 'worker');
 
       var clients = [

@@ -1,0 +1,12 @@
+<script src="require.js"></script>
+<script>
+  require(['/base/bridge.js'], function(bridge) {
+    var service = bridge.service('service-2');
+
+    service.method('method-1', function (param) { return param; });
+
+    service.listen();
+
+    window.dispatchEvent(new CustomEvent('ready'));
+  });
+</script>
