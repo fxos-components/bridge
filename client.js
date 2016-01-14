@@ -1219,7 +1219,7 @@ var adaptors = {
 /**
  * Return a Promise that resolves
  * when a Window is ready to start
- * recieving messages.
+ * receiving messages.
  *
  * @param  {Window} target
  * @return {Promise}
@@ -1233,10 +1233,14 @@ var windowReady = (function() {
   // Side B: Dispatches 'load'
   // from the child window
   if (parent != self) {
-    on(window, domReady, function fn() {
-      off(window, domReady, fn);
+    if (document.readyState === 'loading') {
+      on(window, domReady, function fn() {
+        off(window, domReady, fn);
+        postMessageSync(parent, 'load');
+      });
+    } else {
       postMessageSync(parent, 'load');
-    });
+    }
   }
 
   // Side A: Listens for 'ready' in the parent window
