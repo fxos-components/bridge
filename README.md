@@ -16,7 +16,7 @@ service('my-service')
 var endpoint = new Worker('my-worker.js');
 var myClient = client('my-service', endpoint);
 
-client.method('greet', 'john').then(value => {
+myClient.method('greet', 'john').then(value => {
   console.log(value); //=> 'hello john'
 });
 ```
